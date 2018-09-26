@@ -82,7 +82,7 @@ async def o_invite(client, conn, context):
     except:
         pass
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    em.title = "Ссылка для приглашения Tomori:"
+    em.title = locale[lang]["other_invite_title"]
     em.description = invite_url
     em.add_field(
         name=locale[lang]["global_follow_us"],
