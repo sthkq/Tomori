@@ -177,7 +177,7 @@ async def o_avatar(client, conn, context, who):
         pass
     if not who:
         who = message.author
-    em.title = locale[lang]["global_not_available"].format(clear_name(who.display_name[:50]))
+    em.title = locale[lang]["other_avatar"].format(clear_name(who.display_name[:50]))
     em.set_image(url=who.avatar_url)
     await client.send_message(message.channel, embed=em)
     return
