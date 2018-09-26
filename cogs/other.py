@@ -54,7 +54,7 @@ For any questions talk to <@316287332779163648>.".format(support_url=support_url
 **[Ссылка на сайт]({site_url})**\n\n\
 По всем вопросам обращайтесь к <@316287332779163648>.".format(support_url=support_url, site_url=site_url)
     em.add_field(
-        name="Поддержать Томори",
+        name=locale[lang]["global_follow_us"],
         value=tomori_links,
         inline=False
     )
@@ -85,7 +85,7 @@ async def o_invite(client, conn, context):
     em.title = "Ссылка для приглашения Tomori:"
     em.description = invite_url
     em.add_field(
-        name="Поддержать Томори",
+        name=locale[lang]["global_follow_us"],
         value=tomori_links,
         inline=False
     )
@@ -227,7 +227,7 @@ async def o_like(client, conn, context):
             seconds=s
             )
         em.add_field(
-            name="Поддержать Томори",
+            name=locale[lang]["global_follow_us"],
             value=tomori_links,
             inline=False
         )
@@ -272,7 +272,7 @@ async def o_list(client, conn, context, page):
         em.description = _locale["global_list_is_empty"]
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
+    dat = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
     for index, server in enumerate(dat):
         member_count = 0
         serv = client.get_server(server["discord_id"])

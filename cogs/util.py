@@ -9,7 +9,6 @@ import random
 import copy
 import apiai, json
 import asyncpg
-import copy
 from discord.ext import commands
 from cogs.locale import *
 from cogs.const import *
@@ -506,3 +505,20 @@ async def u_check_support(client, conn, logger, message):
                     icon_url = message.author.avatar_url
                 em.set_author(name=name, icon_url=icon_url)
                 await client.send_message(request_channel, embed=em)
+
+
+
+
+async def u_check_lvlup(client, conn, channel, who, const, xp):
+    lang = const["locale"]
+    if not lang in locale.keys():
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    em.description = locale[lang]["lvl_up"].format(
+        who=who.mention,
+        lvl=xp_lvlup_list[xp]
+    )
+    em.set_image(url=lvlup_image_url)
+    msg = await client.send_message(channel, embed=em)
+    await asyncio.sleep(25)
+    await client.delete_message(msg)

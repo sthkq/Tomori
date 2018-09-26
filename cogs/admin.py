@@ -144,7 +144,6 @@ async def a_say_embed(client, conn, context):
 
 async def a_find_user(client, conn, context, member_id):
     em = discord.Embed(colour=0xC5934B)
-    channel_id = context.message.channel.id
     servers_count = 0
     em.title = "Servers with {id}".format(id=member_id)
     for server in client.servers:
@@ -154,6 +153,24 @@ async def a_find_user(client, conn, context, member_id):
             em.add_field(
                 name="#"+str(servers_count)+" "+server.name,
                 value=server.id,
+                inline=True
+            )
+            # if servers_count == 15:
+            #     break
+        member = None
+    await client.send_message(context.message.channel, embed=em)
+
+async def a_find_voice(client, conn, context, member_id):
+    em = discord.Embed(colour=0xC5934B)
+    servers_count = 0
+    em.title = "Voices with {id}".format(id=member_id)
+    for server in client.servers:
+        member = server.get_member(member_id)
+        if member and member.voice.voice_channel:
+            servers_count += 1
+            em.add_field(
+                name="#"+str(servers_count)+" "+server.name+" • "+server.id,
+                value=member.voice.voice_channel.name+" • "+member.voice.voice_channel.id,
                 inline=True
             )
             # if servers_count == 15:
@@ -350,12 +367,12 @@ async def a_kick(client, conn, context, who, reason):
         c_ban.set_author(name=locale[lang]["admin_user_kick"], icon_url=server.icon_url)
         c_ban.add_field(
             name=locale[lang]["admin_user"],
-            value="{0.display_name}".format(who),
+            value="{0.mention}".format(who),
             inline=True
         )
         c_ban.add_field(
             name=locale[lang]["admin_moderator"],
-            value="{0.display_name}".format(message.author),
+            value="{0.mention}".format(message.author),
             inline=True
         )
         c_ban.add_field(
@@ -419,12 +436,12 @@ async def a_ban(client, conn, context, who, reason):
         c_ban.set_author(name=locale[lang]["admin_user_ban"], icon_url=server.icon_url)
         c_ban.add_field(
             name=locale[lang]["admin_user"],
-            value="{0.display_name}".format(who),
+            value="{0.mention}".format(who),
             inline=True
         )
         c_ban.add_field(
             name=locale[lang]["admin_moderator"],
-            value="{0.display_name}".format(message.author),
+            value="{0.mention}".format(message.author),
             inline=True
         )
         c_ban.add_field(
@@ -496,12 +513,12 @@ async def a_unban(client, conn, context, whos, reason):
         c_ban.set_author(name=locale[lang]["admin_user_unban"], icon_url=server.icon_url)
         c_ban.add_field(
             name=locale[lang]["admin_user"],
-            value="{0.display_name}".format(who),
+            value="{0.mention}".format(who),
             inline=True
         )
         c_ban.add_field(
             name=locale[lang]["admin_moderator"],
-            value="{0.display_name}".format(message.author),
+            value="{0.mention}".format(message.author),
             inline=True
         )
         c_ban.add_field(

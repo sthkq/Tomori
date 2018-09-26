@@ -26,11 +26,7 @@ from cogs.discord_hooks import Webhook
 
 
 __name__ = "Tomori"
-__version__ = "3.20.0"
-
-response_channel_id = "490158714133807134"
-global request_channel
-request_channel = None
+__version__ = "3.20.1"
 
 
 logger = logging.getLogger('tomori')
@@ -497,23 +493,28 @@ async def say(context, mes: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
 async def say_embed(context, mes: str=None):
-    #logger.info('---------[command]:!say_embed\n')
     await a_say_embed(client, conn, context)
 
 @client.command(pass_context=True, name="find_user", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_me()
+@is_it_support()
 async def find_user(context, member_id: str=None):
-    #logger.info('---------[command]:!find_user\n')
     if not member_id:
         return
     await a_find_user(client, conn, context, member_id)
+
+@client.command(pass_context=True, name="find_voice", hidden=True)
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_support()
+async def find_voice(context, member_id: str=None):
+    if not member_id:
+        return
+    await a_find_voice(client, conn, context, member_id)
 
 @client.command(pass_context=True, name="save_roles", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def save_roles(context):
-    #logger.info('---------[command]:!save_roles\n')
     message = context.message
     try:
         await client.delete_message(message)
@@ -530,7 +531,6 @@ async def save_roles(context):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def save_users(context):
-    #logger.info('---------[command]:!save_users\n')
     message = context.message
     try:
         await client.delete_message(message)
@@ -547,21 +547,18 @@ async def save_users(context):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def base(context, mes: str=None):
-    #logger.info('---------[command]:!base\n')
     await a_base(client, conn, context)
 
 @client.command(pass_context=True, name="news", hidden=True, help="Сделать рассылку заданного сообщения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def news(context, message_id: str=None):
-    #logger.info('---------[command]:!news\n')
     await u_news(client, conn, context, message_id)
 
 @client.command(pass_context=True, name="add", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def add(context, role_id: str=None):
-    #logger.info('---------[command]:!add\n')
     message = context.message
     user = message.author
     await client.delete_message(message)
@@ -571,7 +568,6 @@ async def add(context, role_id: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def dele(context, role_id: str=None):
-    #logger.info('---------[command]:!del\n')
     message = context.message
     user = message.author
     await client.delete_message(message)
@@ -581,37 +577,37 @@ async def dele(context, role_id: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def invite_server(context, server_id: str=None):
-    #logger.info('---------[command]:!invite_server\n')
     await u_invite_server(client, conn, context, server_id)
 
 @client.command(pass_context=True, name="report", help="Отправить репорт.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def report(context, mes: str=None):
-    #logger.info('---------[command]:!report\n')
     await o_report(client, conn, context)
 
 @client.command(pass_context=True, name="give", help="Передать свои печенюхи.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def give(context, who: discord.Member=None, count: str=None):
-    #logger.info('---------[command]:!give\n')
     await e_give(client, conn, context, who, count)
 
 @client.command(pass_context=True, name="top", help="Показать топ юзеров.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def top(context, pages: int=None):
-    #logger.info('---------[command]:!top\n')
     await e_top(client, conn, context)
+
+@client.command(pass_context=True, name="testtop", help="Показать топ юзеров.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def testtop(context, page: int=None):
+    await f_testtop(client, conn, context, page)
 
 @client.command(pass_context=True, name="set", help="Настройка.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def set(context, arg1: str=None, arg2: str=None, *, args: str=None):
-    #logger.info('---------[command]:!set\n')
     await o_set(client, conn, context, arg1, arg2, args)
 
 @client.command(pass_context=True, name="backgrounds", aliases=["backs"], help="Показать список фонов.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def backgrounds(context, pages: int=None):
-    #logger.info('---------[command]:!backgrounds\n')
     await o_backgrounds(client, conn, context)
 
 @client.command(pass_context=True, name="$", help="Посмотреть свой баланс.")
@@ -852,16 +848,17 @@ async def on_message(message):
     if "᠌" in message.content:
         await client.delete_message(message)
 
-    if not message.channel.is_private:
-        logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
-    else:
-        logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
-        await client.process_commands(message)
-        return
+    if not message.server.id in not_log_servers:
+        if not message.channel.is_private:
+            logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
+        else:
+            logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
+            await client.process_commands(message)
+            return
 
     server_id = message.server.id
-    serv = await conn.fetchrow("SELECT prefix, xp_cooldown, is_enable FROM settings WHERE discord_id = \'{}\'".format(server_id))
-    if message.author.bot or not serv or not serv[2]:
+    serv = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = \'{}\'".format(server_id))
+    if message.author.bot or not serv or not serv["is_enable"]:
         return
 
     dat = await conn.fetchrow("SELECT xp_time, xp_count, messages, cash FROM users WHERE discord_id = '{}'".format(message.author.id))
@@ -879,6 +876,8 @@ async def on_message(message):
                 cash=dat["cash"] + count,
                 id=message.author.id)
             )
+            if str(dat["xp_count"]+1) in xp_lvlup_list.keys():
+                await u_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1))
         await conn.execute("UPDATE users SET messages = {messages} WHERE discord_id = '{id}'".format(
             messages=dat["messages"]+1,
             id=message.author.id)
@@ -886,7 +885,7 @@ async def on_message(message):
     else:
         await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background) VALUES('{}', '{}', '{}', {}, {}, {}, '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(background_list)))
 
-    if message.content.startswith(serv[0]) or message.content.startswith("!help"):
+    if message.content.startswith(serv["prefix"]) or message.content.startswith("!help"):
         await client.process_commands(message)
 
 

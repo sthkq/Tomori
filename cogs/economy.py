@@ -58,7 +58,7 @@ async def e_timely(client, conn, context):
                 )
             )
             em.add_field(
-                name="Поддержать Томори",
+                name=locale[lang]["global_follow_us"],
                 value=tomori_links,
                 inline=False
             )
@@ -129,7 +129,7 @@ async def e_give(client, conn, context, who, count):
         elif dat[0] < int(count):
             em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[1])
             em.add_field(
-                name="Поддержать Томори",
+                name=locale[lang]["global_follow_us"],
                 value=tomori_links,
                 inline=False
             )
@@ -144,7 +144,7 @@ async def e_give(client, conn, context, who, count):
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[1])
         em.add_field(
-            name="Поддержать Томори",
+            name=locale[lang]["global_follow_us"],
             value=tomori_links,
             inline=False
         )
@@ -262,7 +262,7 @@ async def e_work(client, conn, context):
         else:
             em.description = locale[lang]["economy_already_at_work"].format(clear_name(message.author.display_name+"#"+message.author.discriminator))
             em.add_field(
-                name="Поддержать Томори",
+                name=locale[lang]["global_follow_us"],
                 value=tomori_links,
                 inline=False
             )
@@ -310,7 +310,7 @@ async def e_br(client, conn, context, count):
         elif dat[0] < int(count):
             em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
             em.add_field(
-                name="Поддержать Томори",
+                name=locale[lang]["global_follow_us"],
                 value=tomori_links,
                 inline=False
             )
@@ -338,7 +338,7 @@ async def e_br(client, conn, context, count):
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
-            name="Поддержать Томори",
+            name=locale[lang]["global_follow_us"],
             value=tomori_links,
             inline=False
         )
@@ -383,7 +383,7 @@ async def e_slots(client, conn, context, count):
         elif dat[0] < int(count):
             em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
             em.add_field(
-                name="Поддержать Томори",
+                name=locale[lang]["global_follow_us"],
                 value=tomori_links,
                 inline=False
             )
@@ -452,7 +452,7 @@ async def e_slots(client, conn, context, count):
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
-            name="Поддержать Томори",
+            name=locale[lang]["global_follow_us"],
             value=tomori_links,
             inline=False
         )
