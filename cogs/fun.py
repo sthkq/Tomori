@@ -610,7 +610,7 @@ async def are_you_nitty(client, lang, who, message):
 async def f_testtop(client, conn, context, page):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, is_me, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT server_money, is_me, locale, em_color FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -619,6 +619,7 @@ async def f_testtop(client, conn, context, page):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     if not const or not const["is_me"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
@@ -641,7 +642,7 @@ async def f_testtop(client, conn, context, page):
         em.description = locale[lang]["global_list_is_empty"]
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, avatar_url FROM users ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(offset=(page-1)*5))
+    dat = await conn.fetch("SELECT name, discord_id, avatar_url, xp_count FROM users ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(offset=(page-1)*5))
 #==================================================
     img = Image.open("cogs/stat/top5.png")
     back = Image.open("cogs/stat/top5.png")
@@ -649,12 +650,20 @@ async def f_testtop(client, conn, context, page):
     draws = ImageDraw.Draw(back)
 
     font_position = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", 24)
-    font_name = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", 30)
     font_xp_count = ImageFont.truetype("cogs/stat/Roboto-Regular.ttf", 16)
 
     for i, user in enumerate(dat):
         name = user["name"]
         name = u"{}".format(name)
+        name_size = 1
+        font_name = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", name_size)
+        while font_name.getsize(name)[0] < 180:
+            name_size += 1
+            font_name = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", name_size)
+            if name_size == 31:
+                break
+        name_size -= 1
+        font_name = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", name_size)
         if not name:
             name = " "
         ava_url = user["avatar_url"]
@@ -681,8 +690,26 @@ async def f_testtop(client, conn, context, page):
         avatar_circle = avatar_circle.crop((0, 0, 134, 269))
         img.paste(avatar_circle, (66+i*200, 125), avatar_circle)
         position = "#{}".format(i+1+(page-1)*5)
-        draw.text((66-len(position)*15+i*200, 420), position, (255, 255, 255), font=font_position)
-        draws.text((15+i*200, 45), name, (255, 255, 255), font=font_name)
+        draw.text(
+            (
+                100-font_position.getsize(position)[0]/2+i*200,
+                440-font_position.getsize(position)[1]/2
+            ),
+            position,
+            (255, 255, 255),
+            font=font_position
+        )
+        draw.text((100-font_name.getsize(name)[0]/2+i*200, 50-font_name.getsize(name)[1]/2), name, (255, 255, 255), font=font_name)
+        xp_count = locale[lang]["fun_top5_xp_count"].format((user["xp_count"]))
+        draw.text(
+            (
+                100-font_xp_count.getsize(xp_count)[0]/2+i*200,
+                475-font_xp_count.getsize(xp_count)[1]/2
+            ),
+            xp_count,
+            (255, 255, 255),
+            font=font_xp_count
+        )
 
     back.paste(img, (0, 0), img)
 

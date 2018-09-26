@@ -519,6 +519,9 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
         lvl=xp_lvlup_list[xp]
     )
     em.set_image(url=lvlup_image_url)
-    msg = await client.send_message(channel, embed=em)
-    await asyncio.sleep(25)
-    await client.delete_message(msg)
+    try:
+        msg = await client.send_message(channel, embed=em)
+        await asyncio.sleep(25)
+        await client.delete_message(msg)
+    except:
+        pass

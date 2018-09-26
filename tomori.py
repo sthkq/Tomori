@@ -132,6 +132,8 @@ def is_it_me():
 
 def is_it_support():
     def predicate(ctx):
+        if ctx.message.author.id in admin_list:
+            return True
         return ctx.message.author.id in support_list
     return commands.check(predicate)
 
@@ -596,7 +598,7 @@ async def top(context, pages: int=None):
 
 @client.command(pass_context=True, name="testtop", help="Показать топ юзеров.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_me()
+@is_it_support()
 async def testtop(context, page: int=None):
     await f_testtop(client, conn, context, page)
 
