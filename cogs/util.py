@@ -10,6 +10,7 @@ import copy
 import apiai, json
 import asyncpg
 from discord.ext import commands
+from config.settings import settings
 from cogs.locale import *
 from cogs.const import *
 
@@ -432,7 +433,7 @@ async def u_check_support(client, conn, logger, message):
     if not dat:
         if channel.is_private and message.content:
             content = message.content
-            dialogflow = apiai.ApiAI('93004d9d5f464d4daa2204896b2f9a35').text_request()
+            dialogflow = apiai.ApiAI(settings["dialogflow_token"]).text_request()
             dialogflow.lang = 'ru'
             dialogflow.session_id = 'BatlabAIBot'
             dialogflow.query = content # Посылаем запрос к ИИ с сообщением от юзера
@@ -445,7 +446,7 @@ async def u_check_support(client, conn, logger, message):
                     #     response = "<@!480694830721269761> " + response
                     await client.send_message(message.author, response)
                 else:
-                    await client.send_message(message.author, '{mention}, я Вас не совсем поняла!'.format(mention=message.author.mention))
+                    await client.send_message(message.author, locale[lang]["support_idu"].format(mention=message.author.mention))
             except:
                 pass
         return
@@ -462,7 +463,7 @@ async def u_check_support(client, conn, logger, message):
                 for s in support_list:
                     index += 1
                     if s == message.author.id:
-                        name = "Агент поддержки#000{tag} ✔".format(tag=index)
+                        name = "Tomori Support#000{tag} ✔".format(tag=index)
                         icon_url = client.user.avatar_url
                         break
                 if dat["name"]:
@@ -494,7 +495,7 @@ async def u_check_support(client, conn, logger, message):
                 for s in support_list:
                     index += 1
                     if s == message.author.id:
-                        name = "Агент поддержки#000{tag} ✔".format(tag=index)
+                        name = "Tomori Support#000{tag} ✔".format(tag=index)
                         icon_url = client.user.avatar_url
                         break
                 if dat["name"]:

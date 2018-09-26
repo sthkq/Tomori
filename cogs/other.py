@@ -116,28 +116,28 @@ async def o_server(client, conn, context):
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     em.set_author(name=server.name, icon_url=server.icon_url)
     em.add_field(
-        name=":crown:Владелец",
+        name=locale[lang]["other_server_owner"],
         value="{0.name}#{0.discriminator}".format(server.owner),
         inline=True
     )
     em.add_field(
-        name=":point_right:Префикс",
+        name=locale[lang]["other_server_prefix"],
         value=const[1],
         inline=True
     )
     em.add_field(
-        name=":tv:Каналы",
+        name=locale[lang]["other_server_channels"],
         value=str(len(server.channels)),
         inline=True
     )
     em.add_field(
-        name=":person_with_pouting_face:Пользователи",
+        name=locale[lang]["other_server_members"],
         value=str(len(server.members)),
         inline=True
     )
     em.add_field(
-        name=":hourglass:Возраст",
-        value="{} дней".format(int((datetime.utcnow() - server.created_at).days)),
+        name=locale[lang]["other_server_lifetime"],
+        value=locale[lang]["other_server_days"].format(int((datetime.utcnow() - server.created_at).days)),
         inline=True
     )
     em.add_field(
@@ -146,7 +146,7 @@ async def o_server(client, conn, context):
         inline=True
     )
     em.add_field(
-        name=":smiley:Emoji",
+        name=locale[lang]["other_server_emojis"],
         value=str(len(server.emojis)),
         inline=True
     )
@@ -177,7 +177,7 @@ async def o_avatar(client, conn, context, who):
         pass
     if not who:
         who = message.author
-    em.title = "Аватар {}".format(clear_name(who.display_name[:50]))
+    em.title = locale[lang]["global_not_available"].format(clear_name(who.display_name[:50]))
     em.set_image(url=who.avatar_url)
     await client.send_message(message.channel, embed=em)
     return
@@ -317,7 +317,7 @@ async def o_report(client, conn, context):
         pass
     for s in admin_list:
         try:
-            await client.send_message(discord.utils.get(message.server.members, id=s), "[server - {}, id - {}] (chat - {}, id - {}) <name - {}, id - {}, display_name - {}> <=> {}".format(message.server.name, message.server.id, message.channel.name, message.channel.id, message.author.display_name[:50], message.author.id, message.author.display_name, message.content))
+            await client.send_message(discord.utils.get(client.get_server(admin_server_id).members, id=s), "[server - {}, id - {}] (chat - {}, id - {}) <name - {}, id - {}, display_name - {}> <=> {}".format(message.server.name, message.server.id, message.channel.name, message.channel.id, message.author.display_name[:50], message.author.id, message.author.display_name, message.content))
         except:
             pass
     em.title='{} отправил репорт!'.format(message.author.display_name+"#"+message.author.discriminator)
@@ -380,8 +380,8 @@ async def o_help(client, conn, context):
     if message.content.startswith(const["prefix"]+"help "):
         await h_check_help(client, message, locale[lang], em, const["prefix"])
         return
-    em.title = "Команды бота Tomori"
-    em.description = "Префикс для сервера ``{}:``  {}".format(const["name"], const["prefix"])
+    em.title = locale[lang]["other_help_title"]
+    em.description = locale[lang]["other_help_desc"].format(const["name"], const["prefix"])
     com_adm = ""
     com_econ = ""
     com_fun = ""

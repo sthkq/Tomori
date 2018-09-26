@@ -297,7 +297,7 @@ async def on_member_join(member):
         role = discord.utils.get(member.server.roles, id=dat["autorole_id"])
         if role:
             await client.add_roles(member, role)
-        welcome_channel = discord.utils.get(member.server.channels, id=dat["welcome_channel_id"])
+        welcome_channel = client.get_channel(dat["welcome_channel_id"])
         if welcome_channel:
             message = "{who}, добро пожаловать на сервер {server}! Нас уже {count} человек.".format(
                 who=member.mention,
@@ -850,13 +850,13 @@ async def on_message(message):
     if "᠌" in message.content:
         await client.delete_message(message)
 
-    if not message.server.id in not_log_servers:
-        if not message.channel.is_private:
+    if not message.channel.is_private:
+        if not message.server.id in not_log_servers:
             logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
-        else:
-            logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
-            await client.process_commands(message)
-            return
+    else:
+        logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
+        await client.process_commands(message)
+        return
 
     server_id = message.server.id
     serv = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = \'{}\'".format(server_id))

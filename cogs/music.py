@@ -6,7 +6,7 @@ import pathlib
 
 import discord
 import discord.ext.commands as commands
-import youtube_dl
+import yt
 
 
 def setup(bot):
@@ -57,7 +57,7 @@ class SongInfo:
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'noplaylist': True
     }
-    ytdl = youtube_dl.YoutubeDL(ytdl_opts)
+    ytdl = yt.YoutubeDL(ytdl_opts)
 
     def __init__(self, info, requester, channel):
         self.info = info
