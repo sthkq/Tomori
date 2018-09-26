@@ -593,14 +593,14 @@ async def give(context, who: discord.Member=None, count: str=None):
 
 @client.command(pass_context=True, name="top", help="Показать топ юзеров.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def top(context, pages: int=None):
-    await e_top(client, conn, context)
+async def top(context, page: int=None):
+    await f_top(client, conn, context, page)
 
-@client.command(pass_context=True, name="testtop", help="Показать топ юзеров.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_support()
-async def testtop(context, page: int=None):
-    await f_testtop(client, conn, context, page)
+# @client.command(pass_context=True, name="testtop", help="Показать топ юзеров.")
+# @commands.cooldown(1, 1, commands.BucketType.user)
+# @is_it_support()
+# async def testtop(context, page: int=None):
+#     await f_testtop(client, conn, context, page)
 
 @client.command(pass_context=True, name="set", help="Настройка.")
 @commands.cooldown(1, 1, commands.BucketType.user)

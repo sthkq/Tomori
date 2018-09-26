@@ -604,10 +604,7 @@ async def are_you_nitty(client, lang, who, message):
     return True
 
 
-
-
-
-async def f_testtop(client, conn, context, page):
+async def f_top(client, conn, context, page):
     message = context.message
     server_id = message.server.id
     const = await conn.fetchrow("SELECT server_money, is_me, locale, em_color FROM settings WHERE discord_id = '{}'".format(server_id))
@@ -714,6 +711,6 @@ async def f_testtop(client, conn, context, page):
     back.paste(img, (0, 0), img)
 
     back.save('cogs/stat/return/top/{}.png'.format(message.author.id))
-    await client.upload("cogs/stat/return/top/{}.png".format(message.author.id))
+    await client.send_file(message.channel, "cogs/stat/return/top/{}.png".format(message.author.id), content=locale[lang]["fun_top5_response"])
     os.remove("cogs/stat/return/top/{}.png".format(message.author.id))
     return

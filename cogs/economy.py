@@ -181,57 +181,6 @@ async def e_cash(client, conn, context):
     await client.send_message(message.channel, embed=em)
     return
 
-async def e_top(client, conn, context):
-    message = context.message
-    server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, em_color, is_top, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const["locale"]
-    if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
-        await client.send_message(message.channel, embed=em)
-        return
-    _locale = locale[lang]
-    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not const["is_top"]:
-        em.description = _locale["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
-        await client.send_message(message.channel, embed=em)
-        return
-    try:
-        await client.delete_message(message)
-    except:
-        pass
-    em.title = _locale["economy_top_of_users"]
-    dat = await conn.fetchrow("SELECT COUNT(name) FROM users")
-    if dat[0] == 0:
-        em.description = _locale["global_list_is_empty"]
-        await client.send_message(message.channel, embed=em)
-        return
-    dat = await conn.fetch("SELECT name, xp_count, discriminator FROM users ORDER BY xp_count DESC LIMIT 10")
-    for index, user in enumerate(dat):
-        xp_lvl = 0
-        if user["xp_count"] > 0:
-            while user["xp_count"] >= (xp_lvl * (xp_lvl + 1) * 5):
-                xp_lvl = xp_lvl + 1
-        if not xp_lvl == 0:
-            xp_lvl -= 1
-        em.add_field(
-            name="#{index} {name}#{discriminator}".format(
-                index=index+1,
-                name=user["name"],
-                discriminator=user["discriminator"]
-            ),
-            value=_locale["economy_top_element"].format(
-                lvl=xp_lvl,
-                xp_count=user["xp_count"]
-            ),
-            inline=False
-        )
-    await client.send_message(message.channel, embed=em)
-    return
-
 async def e_work(client, conn, context):
     message = context.message
     server_id = message.server.id
