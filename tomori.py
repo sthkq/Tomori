@@ -22,7 +22,6 @@ from cogs.other import *
 from cogs.util import *
 from cogs.locale import *
 from cogs.api import *
-from cogs.discord_hooks import Webhook
 
 
 __name__ = "Tomori"
@@ -234,9 +233,9 @@ async def on_server_remove(server):
     # for s in admin_list:
     #     await client.send_message(discord.utils.get(client.get_server('327029562535968768').members, id=s), "Томори удалили с сервера {} | {}.".format(server.name, server.id))
 
-@client.event
-async def on_voice_state_update(before, after):
-    await u_voice_state_update(client, conn, logger, before, after)
+# @client.event
+# async def on_voice_state_update(before, after):
+#     await u_voice_state_update(client, conn, logger, before, after)
 
 @client.event
 async def on_socket_raw_receive(raw_msg):
@@ -356,9 +355,9 @@ async def on_ready():
 
 @client.event
 async def on_command_error(error, ctx):
-    pass
     if isinstance(error, commands.CommandOnCooldown):
         await client.send_message(ctx.message.channel, "{who}, command is on cooldown. Wait {seconds} seconds".format(who=ctx.message.author.mention, seconds=int(error.retry_after)))
+    pass
     # elif isinstance(error, commands.MissingRequiredArgument):
     #     await send_cmd_help(ctx)
     # elif isinstance(error, commands.BadArgument):
@@ -412,36 +411,23 @@ async def work(context):
 @client.command(pass_context=True, name="help", aliases=['commands', 'command', 'helps'], hidden=True, help="Показать список команд.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def helps(context):
-    #logger.info('---------[command]:!command\n')
     await o_help(client, conn, context)
 
 @client.command(pass_context=True, name='server', hidden=True, help="Показать информацию о сервере.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def server(context):
-    #logger.info('---------[command]:!server\n')
     await o_server(client, conn, context)
 
 @client.command(pass_context=True, name="ping", help="Проверить задержку соединения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def ping(context):
-    #logger.info('---------[command]:!ping\n')
     await o_ping(client, conn, context)
 
-@client.command(pass_context=True, name="hook")
+@client.command(pass_context=True, name="webhook", aliases=["wh"])
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_me()
-async def hook(context):
-    #logger.info('---------[command]:!test\n')
-    message = context.message
-    try:
-        await client.delete_message(message)
-    except:
-        pass
-    msg = Webhook(
-        url='https://discordapp.com/api/webhooks/493058039151198230/itqyxwwXtT4U2tNJms7NfNAa6UvrL1rRy3Ol2EjY53YQEoLFC5P8hPAxltgKz0FOYgxS',
-        msg=message.content.split(" ", maxsplit=1)[1]
-    )
-    msg.post()
+@is_it_support()
+async def webhook(context, name: str=None, *, value: str=None):
+    await o_webhook(client, conn, context, name, value)
 
 # @client.command(pass_context=True, name="delete", help="Удалить себя из базы.")
 # @commands.cooldown(1, 1, commands.BucketType.user)
@@ -463,7 +449,6 @@ async def hook(context):
 @client.command(pass_context=True, name="createvoice", help="Создать войс канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def createvoice(context):
-    #logger.info('---------[command]:!createvoice\n')
     await u_createvoice(client, conn, logger, context)
 
 @client.command(pass_context=True, name="region")
@@ -475,21 +460,18 @@ async def region(context):
 @client.command(pass_context=True, name="setvoice", help="Установить войс канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def setvoice(context):
-    #logger.info('---------[command]:!setvoice\n')
     await u_setvoice(client, conn, logger, context)
 
 @client.command(pass_context=True, name="setlobby", help="Установить войс для ожидания.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def setlobby(context):
-    #logger.info('---------[command]:!setlobby\n')
     await u_setlobby(client, conn, logger, context)
 
 @client.command(pass_context=True, name="say", hidden=True, help="Напишет ваш текст.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
-async def say(context, mes: str=None):
-    #logger.info('---------[command]:!say\n')
-    await a_say(client, conn, context)
+async def say(context, *, value: str=None):
+    await a_say(client, conn, context, value)
 
 @client.command(pass_context=True, name="say_embed", hidden=True, help="Напишет ваш текст.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -581,6 +563,12 @@ async def dele(context, role_id: str=None):
 async def invite_server(context, server_id: str=None):
     await u_invite_server(client, conn, context, server_id)
 
+@client.command(pass_context=True, name="invite_channel", hidden=True, help="Создать инвайт на данный канал.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def invite_channel(context, channel_id: str=None):
+    await u_invite_channel(client, conn, context, channel_id)
+
 @client.command(pass_context=True, name="report", help="Отправить репорт.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def report(context, mes: str=None):
@@ -596,16 +584,15 @@ async def give(context, who: discord.Member=None, count: str=None):
 async def top(context, page: int=None):
     await f_top(client, conn, context, page)
 
-# @client.command(pass_context=True, name="testtop", help="Показать топ юзеров.")
-# @commands.cooldown(1, 1, commands.BucketType.user)
-# @is_it_support()
-# async def testtop(context, page: int=None):
-#     await f_testtop(client, conn, context, page)
-
 @client.command(pass_context=True, name="set", help="Настройка.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def set(context, arg1: str=None, arg2: str=None, *, args: str=None):
     await o_set(client, conn, context, arg1, arg2, args)
+
+@client.command(pass_context=True, name="remove", aliases=["rm"], help="Настройка.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def remove(context, arg1: str=None, arg2: str=None, *, args: str=None):
+    await o_remove(client, conn, context, arg1, arg2, args)
 
 @client.command(pass_context=True, name="backgrounds", aliases=["backs"], help="Показать список фонов.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -615,13 +602,11 @@ async def backgrounds(context, pages: int=None):
 @client.command(pass_context=True, name="$", help="Посмотреть свой баланс.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def cash(context):
-    #logger.info('---------[command]:!$\n')
     await e_cash(client, conn, context)
 
 @client.command(pass_context=True, name="sex", help="Трахнуть.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def sex(context, who: discord.Member=None):
-    #logger.info('---------[command]:!sex\n')
     await f_sex(client, conn, context, who)
 
 @client.command(pass_context=True, name="hug", help="Обнять.")

@@ -414,6 +414,28 @@ async def u_invite_server(client, conn, context, server_id):
         await client.send_message(message.channel, embed=em)
         return
 
+async def u_invite_channel(client, conn, context, channel_id):
+    message = context.message
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    em = discord.Embed(colour=0xC5934B)
+    channel = client.get_channel(channel_id)
+    if not channel:
+        em.description = "Channel (ID:{id}) - не существует.".format(id=channel_id)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        invite = await client.create_invite(channel, max_age=0, max_uses=0)
+        em.description = "Channel (ID:{id}) invite to channel {channel_name}:\n{invite}".format(id=channel_id, invite=invite.url, channel_name=channel.name)
+        await client.send_message(message.channel, embed=em)
+        return
+    except:
+        em.description = "Channel (ID:{id}) - не удалось создать инвайт в канал.".format(id=channel_id)
+        await client.send_message(message.channel, embed=em)
+        return
+
 def u_get_channel(client, channel_id):
     channel = client.get_channel(channel_id)
     if not channel:
@@ -526,3 +548,22 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
         await client.delete_message(msg)
     except:
         pass
+
+
+
+# async def u_check_achievements(client, conn, const, message, key):
+#     lang = const["locale"]
+#     if not lang in locale.keys():
+#         return
+#     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+#     em.description = locale[lang]["lvl_up"].format(
+#         who=who.mention,
+#         lvl=xp_lvlup_list[xp]
+#     )
+#     em.set_image(url=lvlup_image_url)
+#     try:
+#         msg = await client.send_message(channel, embed=em)
+#         await asyncio.sleep(25)
+#         await client.delete_message(msg)
+#     except:
+#         pass

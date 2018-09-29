@@ -13,12 +13,55 @@ from discord.ext import commands
 from cogs.locale import *
 from cogs.const import *
 from cogs.help import *
+from cogs.discord_hooks import Webhook
 
 support_url = "https://discord.gg/tomori"
 site_url = "http://discord.band"
 site_commands_url = "https://discord.band/commands"
 invite_url = "https://discordapp.com/api/oauth2/authorize?client_id=491605739635212298&permissions=536341719&redirect_uri=https%3A%2F%2Fdiscord.band&scope=bot"
 
+
+
+async def o_webhook(client, conn, context, name, value):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'webhook' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=clear_name(name).lower()))
+    if not dat:
+        em.description = locale[lang]["other_webhook_not_exists"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            name=name
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        ret = json.loads(value)
+        if ret and isinstance(ret, dict):
+            msg = Webhook(web_url=dat["value"], **ret)
+            msg.post()
+    except:
+        msg = Webhook(
+            web_url=dat["value"],
+            description=value
+        )
+        msg.post()
 
 async def o_about(client, conn, context):
     message = context.message
@@ -681,6 +724,176 @@ async def o_set(client, conn, context, arg1, arg2, args):
             who=message.author.display_name+"#"+message.author.discriminator,
             lang=arg2
         )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
+    if arg1 == "webhook" or arg1 == "wh":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="value"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+
+        arg2 = clear_name(arg2).lower()
+        args = clear_name(args)
+        if not arg2:
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'webhook' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=arg2))
+        if dat:
+            em.description = locale[lang]["other_set_webhook_exists"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=arg2
+            )
+        else:
+            await conn.execute("INSERT INTO mods(name, server_id, type, value) VALUES('{name}', '{id}', '{type}', '{value}')".format(
+                name=arg2,
+                id=message.server.id,
+                type="webhook",
+                value=args
+            ))
+            em.description = locale[lang]["other_webhook_success_response"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=arg2
+            )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
+    if not arg1:
+        em.description = locale[lang]["other_missed_argument"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            arg="category"
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
+    em.description = locale[lang]["other_incorrect_argument"].format(
+        who=message.author.display_name+"#"+message.author.discriminator,
+        arg="category"
+    )
+    await client.send_message(message.channel, embed=em)
+    return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def o_remove(client, conn, context, arg1, arg2, args):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT em_color, locale, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+
+
+    if arg1 == "autorole":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.execute("UPDATE settings SET autorole_id = NULL WHERE discord_id = '{}'".format(message.server.id))
+        em.description = locale[lang]["other_autorole_success_delete"].format(
+            who=message.author.display_name+"#"+message.author.discriminator
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
+    if arg1 == "webhook" or arg1 == "wh":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+
+        arg2 = clear_name(arg2).lower()
+        if not arg2:
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'webhook' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=arg2))
+        if not dat:
+            em.description = locale[lang]["other_webhook_not_exists"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=arg2
+            )
+        else:
+            await conn.execute("DELETE FROM mods WHERE type = 'webhook' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=arg2))
+            em.description = locale[lang]["other_webhook_success_delete"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=arg2
+            )
         await client.send_message(message.channel, embed=em)
         return
 

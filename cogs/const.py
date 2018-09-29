@@ -342,6 +342,14 @@ background_name_list = ['Neko',
                         'Your Lie In April'
 ]
 
+
+
+# achievements = [
+#
+# ]
+
+
+
 prefix_list = [
 	'!',
 	'?',

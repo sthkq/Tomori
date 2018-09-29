@@ -92,11 +92,11 @@ async def a_disable(client, conn, context):
     await client.send_message(message.author, "Сервер '{} | {}' деактивирован.".format(message.server.name, message.server.id))
     return
 
-async def a_say(client, conn, context):
+async def a_say(client, conn, context, value):
     message = context.message
     server_id = message.server.id
     const = await conn.fetchrow("SELECT em_color, is_say, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -104,8 +104,8 @@ async def a_say(client, conn, context):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_say"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -113,7 +113,52 @@ async def a_say(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    await client.send_message(message.channel, message.content[5:])
+    try:
+        ret = json.loads(value)
+        if ret and isinstance(ret, dict):
+            # if "description" in ret.keys():
+            #     em.description = ret["description"]
+            # if "title" in ret.keys():
+            #     em.title = ret["title"]
+            # if "url" in ret.keys():
+            #     em.url = ret["url"]
+            em = discord.Embed(**ret)
+            if "author" in ret.keys():
+                em.set_author(
+                    name=ret["author"].get("name"),
+                    url=ret["author"].get("url", discord.Embed.Empty),
+                    icon_url=ret["author"].get("icon_url", discord.Embed.Empty)
+                )
+            if "footer" in ret.keys():
+                em.set_footer(
+                    text=ret["footer"].get("text", discord.Embed.Empty),
+                    icon_url=ret["footer"].get("icon_url", discord.Embed.Empty)
+                )
+            if "image" in ret.keys():
+                em.set_image(
+                    url=ret["image"]
+                )
+            if "thumbnail" in ret.keys():
+                em.set_thumbnail(
+                    url=ret["thumbnail"]
+                )
+            if "fields" in ret.keys():
+                for field in ret["fields"]:
+                    try:
+                        em.add_field(
+                            name=field.get("name"),
+                            value=field.get("value"),
+                            inline=field.get("inline", False)
+                        )
+                    except:
+                        pass
+        if "text" in ret.keys():
+            text = ret["text"]
+        else:
+            text = None
+        await client.send_message(message.channel, content=text, embed=em)
+    except:
+        await client.send_message(message.channel, value)
     return
 
 async def a_say_embed(client, conn, context):

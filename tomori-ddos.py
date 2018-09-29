@@ -188,7 +188,7 @@ async def on_ready():
     #client.loop.create_task(ddosing())
     client.loop.create_task(kicking())
     await client.change_presence(game=discord.Game(type=3, name="DDOS-protection"))
-    await client.send_message(client.get_server('327029562535968768').get_member("430383342182203392"), "DDOS-protection acquired.")
+    await client.send_message(client.get_server(log_join_leave_server_channel_id).get_member("430383342182203392"), "DDOS-protection acquired.")
 
 
 @client.command(pass_context=True, name="get_bans", hidden=True, help="Перенести забаненных юзеров в черный список.")
@@ -418,6 +418,7 @@ async def clear_server(context):
         dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
         if dat:
             ban_members.append(member)
+            #client.loop.create_task(client.ban(member))
         else:
             for compare in ddos_name_list:
                 if compare.lower() in member.name.lower():# or (datetime.utcnow() - member.created_at).days == 0:

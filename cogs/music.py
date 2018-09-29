@@ -6,7 +6,7 @@ import pathlib
 
 import discord
 import discord.ext.commands as commands
-import yt
+import youtube_dl
 
 
 def setup(bot):
@@ -57,7 +57,7 @@ class SongInfo:
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'noplaylist': True
     }
-    ytdl = yt.YoutubeDL(ytdl_opts)
+    ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 
     def __init__(self, info, requester, channel):
         self.info = info
@@ -277,7 +277,7 @@ class Music:
         await ctx.send(f'{ctx.music_state.playlist}')
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions()
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
         """Summons the bot to a voice channel.
 
@@ -334,22 +334,22 @@ class Music:
         await ctx.message.add_reaction('\N{CROSS MARK}')
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions()
     async def pause(self, ctx):
         """Pauses the player."""
         if ctx.voice_client:
             ctx.voice_client.pause()
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions()
     async def resume(self, ctx):
         """Resumes the player."""
         if ctx.voice_client:
             ctx.voice_client.resume()
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def stop(self, ctx):
+    @commands.has_permissions()
+    async def leave(self, ctx):
         """Stops the player, clears the playlist and leaves the voice channel."""
         await ctx.music_state.stop()
 
@@ -387,7 +387,7 @@ class Music:
             ctx.voice_client.stop()
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions()
     async def minskips(self, ctx, number: int):
         """Sets the minimum number of votes to skip a song.
 
