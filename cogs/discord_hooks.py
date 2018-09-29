@@ -2,6 +2,7 @@ import json
 import requests
 import time
 import datetime
+import discord
 from collections import defaultdict
 
 class Webhook:
@@ -19,15 +20,15 @@ class Webhook:
 		try:
 			self.author = kwargs.get('author').get("name")
 		except:
-			pass
+			self.author = None
 		try:
 			self.author_icon = kwargs.get('author').get("icon_url")
 		except:
-			pass
+			self.author_icon = discord.Embed.Empty
 		try:
 			self.author_url = kwargs.get('author').get("url")
 		except:
-			pass
+			self.author_url = discord.Embed.Empty
 		self.description = kwargs.get('description')
 		self.fields = kwargs.get('fields', [])
 		self.image = kwargs.get('image')
@@ -35,11 +36,11 @@ class Webhook:
 		try:
 			self.footer = kwargs.get('footer').get("text")
 		except:
-			pass
+			self.footer = discord.Embed.Empty
 		try:
 			self.footer_icon = kwargs.get('footer').get("icon_url")
 		except:
-			pass
+			self.footer_icon = discord.Embed.Empty
 		self.ts = kwargs.get('ts')
 
 

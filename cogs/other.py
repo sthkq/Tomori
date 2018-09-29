@@ -56,10 +56,16 @@ async def o_webhook(client, conn, context, name, value):
         if ret and isinstance(ret, dict):
             msg = Webhook(web_url=dat["value"], **ret)
             msg.post()
+        else:
+            msg = Webhook(
+                web_url=dat["value"],
+                text=value
+            )
+            msg.post()
     except:
         msg = Webhook(
             web_url=dat["value"],
-            description=value
+            text=value
         )
         msg.post()
 

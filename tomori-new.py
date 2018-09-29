@@ -57,7 +57,8 @@ async def get_prefixes():
     # await con.close()
     #
     # print(prefixes)
-    bot = commands.Bot(command_prefix=prefix_list, shard_count=10)
+    bot = commands.Bot(command_prefix="!", shard_count=10)
+    #bot = commands.Bot(command_prefix=prefix_list, shard_count=10)
     bot.remove_command('help')
     bot.load_extension('cogs.music')
 
