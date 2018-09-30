@@ -392,6 +392,11 @@ async def u_invite_server(client, conn, context, server_id):
         em.description = "Сервер (ID:{id}) invite:\n{invite}".format(id=server_id, invite=server.splash_url)
         await client.send_message(message.channel, embed=em)
         return
+    # invites = await client.invites_from(server)
+    # if invites:
+    #     em.description = "Сервер (ID:{id}) invite from server:\n{invite}".format(id=server_id, invite=invites[0].url)
+    #     await client.send_message(message.channel, embed=em)
+    #     return
     try:
         invite = await client.create_invite(server, max_age=0, max_uses=0)
         em.description = "Сервер (ID:{id}) invite created:\n{invite}".format(id=server_id, invite=invite.url)

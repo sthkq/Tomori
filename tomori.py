@@ -194,7 +194,7 @@ async def dbl_updating():
     while True:
         try:
             await dblpy.post_server_count()
-        except Exception as e:
+        except:
             pass
         await asyncio.sleep(1800)
 
@@ -386,26 +386,22 @@ async def on_command_error(error, ctx):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def enable(context):
-    #logger.info('---------[command]:!enable\n')
     await a_enable(client, conn, context)
 
 @client.command(pass_context=True, name="disable", help="Деактивировать сервер (Только для меня).")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
 async def disable(context):
-    #logger.info('---------[command]:!disable\n')
     await a_disable(client, conn, context)
 
 @client.command(pass_context=True, name="timely", help="Cобрать печенюхи.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def timely(context):
-    #logger.info('---------[command]:!timely\n')
     await e_timely(client, conn, context)
 
 @client.command(pass_context=True, name="work", help="Выйти на работу.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def work(context):
-    #logger.info('---------[command]:!work\n')
     await e_work(client, conn, context)
 
 @client.command(pass_context=True, name="help", aliases=['commands', 'command', 'helps'], hidden=True, help="Показать список команд.")
@@ -425,7 +421,7 @@ async def ping(context):
 
 @client.command(pass_context=True, name="webhook", aliases=["wh"])
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_support()
+@is_it_admin()
 async def webhook(context, name: str=None, *, value: str=None):
     await o_webhook(client, conn, context, name, value)
 
@@ -467,22 +463,26 @@ async def setvoice(context):
 async def setlobby(context):
     await u_setlobby(client, conn, logger, context)
 
+@client.command(pass_context=True, name="buy", hidden=True, help="Купить роль.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def buy(context, *, value: str):
+    await e_buy(client, conn, context, value)
+
+@client.command(pass_context=True, name="shop", help="Показать магазин ролей.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def shop(context, page: int=None):
+    await e_shop(client, conn, context, page)
+
 @client.command(pass_context=True, name="say", hidden=True, help="Напишет ваш текст.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
-async def say(context, *, value: str=None):
+async def say(context, *, value: str):
     await a_say(client, conn, context, value)
-
-@client.command(pass_context=True, name="say_embed", hidden=True, help="Напишет ваш текст.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_admin()
-async def say_embed(context, mes: str=None):
-    await a_say_embed(client, conn, context)
 
 @client.command(pass_context=True, name="find_user", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_support()
-async def find_user(context, member_id: str=None):
+async def find_user(context, member_id: str):
     if not member_id:
         return
     await a_find_user(client, conn, context, member_id)
@@ -490,9 +490,7 @@ async def find_user(context, member_id: str=None):
 @client.command(pass_context=True, name="find_voice", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_support()
-async def find_voice(context, member_id: str=None):
-    if not member_id:
-        return
+async def find_voice(context, member_id: str):
     await a_find_voice(client, conn, context, member_id)
 
 @client.command(pass_context=True, name="save_roles", hidden=True)
@@ -830,14 +828,15 @@ async def giveaway(context, count: int=300, message: str="Розыгрыш!"):
 
 @client.event
 async def on_message(message):
+    if not message.channel.is_private and message.server.id in not_log_servers:
+        return
     await u_check_support(client, conn, logger, message)
 
     if "᠌" in message.content:
         await client.delete_message(message)
 
     if not message.channel.is_private:
-        if not message.server.id in not_log_servers:
-            logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
+        logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
     else:
         logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
         await client.process_commands(message)
@@ -847,6 +846,14 @@ async def on_message(message):
     serv = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = \'{}\'".format(server_id))
     if message.author.bot or not serv or not serv["is_enable"]:
         return
+
+    if ('уруру' in message.content.lower()) and not message.author.bot and (message.author.id == '414485183396315146' or message.author.id == '306055749023563778'):
+        em = discord.Embed(colour=0xC5934B)
+        em.description = "{who}, {ururu}".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            ururu=random.choice(ururu_responses)
+        )
+        await client.send_message(message.channel, embed=em)
 
     dat = await conn.fetchrow("SELECT xp_time, xp_count, messages, cash FROM users WHERE discord_id = '{}'".format(message.author.id))
     t = int(time.time())

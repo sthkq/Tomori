@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import re
+import logging
 
 
 punch_list = ['https://media.giphy.com/media/1n753Z1ZeGdkwxtYHo/giphy.gif',
@@ -389,6 +390,17 @@ ddos_name_list = [
 "discord.gg"
 ]
 
+
+ururu_responses = [
+"Уруру",
+"Урурушеньки",
+"Урурушечки",
+"Уруру))",
+"Урурушеньки))",
+"Урурушечки))"
+]
+
+
 slot_kanna = '<:kanna:491965559907418112>'
 slot_pantsu1 = '<:pantsu:491967185254613023>'
 slot_pantsu2 = '<:pantsu2:491965559387455506>'
@@ -405,11 +417,11 @@ while i < 3:
 	i += 1
 	slots_ver.append(slot_kanna)
 i = 0
-while i < 50:
+while i < 40:
 	i += 1
 	slots_ver.append(slot_melban)
 i = 0
-while i < 50:
+while i < 40:
 	i += 1
 	slots_ver.append(slot_boom)
 i = 0
@@ -513,8 +525,8 @@ not_log_servers = [
 log_join_leave_server_channel_id = "493196075352457247"
 admin_server_id = "327029562535968768"
 
-#             Ананасовая Печенюха         Unknown           Питерская Илита            Teris
-admin_list = ['430383342182203392', '316287332779163648', '432879426066317322', '281037696225247233']
+#             Ананасовая Печенюха         Unknown           Питерская Илита            Teris                Oddy38
+admin_list = ['430383342182203392', '316287332779163648', '432879426066317322', '281037696225247233', '476626134432481281',]
 #               Ананасовая Печенюха         Unknown           Питерская Илита            Teris                Oddy38              mankidelufi              _Nier                RusTNT
 support_list = ['430383342182203392', '316287332779163648', '432879426066317322', '281037696225247233', '476626134432481281', '342557917121347585', '236426208315834369', '258156175730802688']
 
@@ -537,3 +549,22 @@ tomori_links = '[Проголосовать](https://discordbots.org/bot/4916057
 
 def clear_name(name):
 	return re.sub(r'[\';"\\]+', '', name)
+
+
+
+logg = logging.getLogger('tomori-debug')
+logg.setLevel(logging.DEBUG)
+logname = 'logs/debug.log'
+try:
+    f = open(logname, 'r')
+except:
+    f = open(logname, 'w')
+    f.close()
+finally:
+    handler = logging.FileHandler(
+        filename=logname,
+        encoding='utf-8',
+        mode='a')
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logg.addHandler(handler)

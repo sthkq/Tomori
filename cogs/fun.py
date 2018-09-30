@@ -631,12 +631,12 @@ async def f_top(client, conn, context, page):
     pages = (((all_count - 1) // 5) + 1)
     if not page:
         page = 1
-    if page > pages:
-        em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
-        await client.send_message(message.channel, embed=em)
-        return
     if all_count == 0:
         em.description = locale[lang]["global_list_is_empty"]
+        await client.send_message(message.channel, embed=em)
+        return
+    if page > pages:
+        em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
         await client.send_message(message.channel, embed=em)
         return
     dat = await conn.fetch("SELECT name, discord_id, avatar_url, xp_count FROM users ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(offset=(page-1)*5))

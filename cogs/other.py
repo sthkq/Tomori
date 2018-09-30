@@ -438,7 +438,7 @@ async def o_help(client, conn, context):
     com_other = ""
     com_mon = ""
     if const["is_say"]:
-        com_adm += "``say``, ``say_embed``, "
+        com_adm += "``say``, "
     if const["is_clear"]:
         com_adm += "``clear``, "
     if const["is_sex"]:
@@ -690,6 +690,76 @@ async def o_set(client, conn, context, arg1, arg2, args):
         return
 
 
+    if arg1 == "shop":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="cost"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        args = args.rsplit(" ", 1)
+        if len(args) == 2:
+            arg2 = arg2 + " " + args[0]
+            args = args[1]
+            arg2 = arg2.rstrip()
+        else:
+            args = args[0]
+        logg.info("arg2 = {arg2}".format(arg2=arg2))
+        logg.info("args = {args}".format(args=args))
+        role = discord.utils.get(message.server.roles, name=arg2)
+        if not role:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            role = discord.utils.get(message.server.roles, id=arg2)
+        if not role:
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args.isdigit():
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="cost"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'shop' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=role.id))
+        if dat:
+            em.description = locale[lang]["other_set_shop_exists"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                role_id=role.id
+            )
+        else:
+            await conn.execute("INSERT INTO mods(name, server_id, type, condition) VALUES('{name}', '{id}', '{type}', '{cond}')".format(
+                name=role.id,
+                id=message.server.id,
+                type="shop",
+                cond=args
+            ))
+            em.description = locale[lang]["other_shop_success_response"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                role_id=role.id,
+                cost=args
+            )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
 
     if arg1 == "language" or arg1 == "lang":
         if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
@@ -899,6 +969,50 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             em.description = locale[lang]["other_webhook_success_delete"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 name=arg2
+            )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
+    if arg1 == "shop":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if args:
+            arg2 = arg2 + " " + args
+        logg.info("remove arg2 = {arg2}".format(arg2=arg2))
+        role = discord.utils.get(message.server.roles, name=arg2)
+        if not role:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            role = discord.utils.get(message.server.roles, id=arg2)
+        if not role:
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="name"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'shop' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=role.id))
+        if not dat:
+            em.description = locale[lang]["other_shop_not_exists"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                role_id=role.id
+            )
+        else:
+            await conn.execute("DELETE FROM mods WHERE type = 'shop' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=role.id))
+            em.description = locale[lang]["other_shop_success_delete"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                role_id=role.id
             )
         await client.send_message(message.channel, embed=em)
         return

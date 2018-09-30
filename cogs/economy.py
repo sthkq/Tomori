@@ -8,6 +8,7 @@ import random
 import copy
 import json
 import asyncpg
+import re
 from discord.ext import commands
 from cogs.const import *
 from cogs.locale import *
@@ -405,5 +406,133 @@ async def e_slots(client, conn, context, count):
             value=tomori_links,
             inline=False
         )
+    await client.send_message(message.channel, embed=em)
+    return
+
+async def e_buy(client, conn, context, value):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    role = discord.utils.get(message.server.roles, name=value)
+    if not role:
+        value = re.sub(r'[<@#&!>]+', '', value.lower())
+        role = discord.utils.get(message.server.roles, id=value)
+    if not role:
+        em.description = locale[lang]["global_role_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    if role in message.author.roles:
+        em.description = locale[lang]["global_role_already_have"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            role=role.mention
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'shop' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=role.id))
+    if dat:
+        user = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
+        if user:
+            if int(dat["condition"]) > user["cash"]:
+                em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
+                em.add_field(
+                    name=locale[lang]["global_follow_us"],
+                    value=tomori_links,
+                    inline=False
+                )
+            else:
+                try:
+                    await client.add_roles(message.author, role)
+                except:
+                    em.description = locale[lang]["economy_role_not_permission"].format(
+                        who=message.author.display_name+"#"+message.author.discriminator,
+                        role=role.mention
+                    )
+                    await client.send_message(message.channel, embed=em)
+                    return
+                await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=user["cash"] - dat["condition"], id=message.author.id))
+                em.description = locale[lang]["economy_role_response"].format(
+                    who=message.author.mention,
+                    role=role.mention
+                )
+        else:
+            await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+            em.add_field(
+                name=locale[lang]["global_follow_us"],
+                value=tomori_links,
+                inline=False
+            )
+    else:
+        em.description = locale[lang]["economy_role_not_in_shop"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            role=role.mention
+        )
+    await client.send_message(message.channel, embed=em)
+
+async def e_shop(client, conn, context, page):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    dat = await conn.fetchrow("SELECT COUNT(name) FROM mods WHERE type = 'shop' AND server_id = '{server_id}'".format(server_id=server_id))
+    all_count = dat[0]
+    pages = (((all_count - 1) // 25) + 1)
+    if not page:
+        page = 1
+    em.title = locale[lang]["economy_shop_title"]
+    if all_count == 0:
+        em.description = locale[lang]["global_list_is_empty"]
+        await client.send_message(message.channel, embed=em)
+        return
+    if page > pages:
+        em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
+        await client.send_message(message.channel, embed=em)
+        return
+    dat = await conn.fetch("SELECT * FROM mods WHERE type = 'shop' AND server_id = '{server_id}' ORDER BY condition::int DESC LIMIT 25 OFFSET {offset}".format(server_id=server_id, offset=(page-1)*25))
+    if dat:
+        for role in dat:
+            _role = discord.utils.get(message.server.roles, id=role["name"])
+            if _role:
+                em.add_field(
+                    name=_role.name,
+                    value=role["condition"],
+                    inline=True
+                )
+        em.set_footer(text=locale[lang]["other_footer_page"].format(number=page, length=pages))
+    else:
+        em.description = locale[lang]["global_list_is_empty"]
     await client.send_message(message.channel, embed=em)
     return
