@@ -610,79 +610,66 @@ async def sex(context, who: discord.Member=None):
 @client.command(pass_context=True, name="hug", help="Обнять.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def hug(context, who: discord.Member=None):
-    #logger.info('---------[command]:!hug\n')
     await f_hug(client, conn, context, who)
 
 @client.command(pass_context=True, name="wink", help="Подмигнуть.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def wink(context, who: discord.Member=None):
-    #logger.info('---------[command]:!wink\n')
     await f_wink(client, conn, context, who)
 
 @client.command(pass_context=True, name="five", help="Дать пять.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def five(context, who: discord.Member=None):
-    #logger.info('---------[command]:!five\n')
     await f_five(client, conn, context, who)
 
 @client.command(pass_context=True, name="fuck", help="Показать фак.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def fuck(context, who: discord.Member=None):
-    #logger.info('---------[command]:!fuck\n')
     await f_fuck(client, conn, context, who)
 
 @client.command(pass_context=True, name="punch", help="Дать леща.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def punch(context, who: discord.Member=None):
-    #logger.info('---------[command]:!punch\n')
     await f_punch(client, conn, context, who)
 
 @client.command(pass_context=True, name="kiss", help="Поцеловать.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def kiss(context, who: discord.Member=None):
-    #logger.info('---------[command]:!kiss\n')
     await f_kiss(client, conn, context, who)
 
 @client.command(pass_context=True, name="drink", help="Уйти в запой.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def drink(context):
-    #logger.info('---------[command]:!drink\n')
     await f_drink(client, conn, context)
 
 @client.command(pass_context=True, name="shiki", help="Найти аниме на Shikimori.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def shiki(context, *, name: str=None):
-    #logger.info('---------[command]:!br\n')
     await api_shiki(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def google_search(context, *, name: str=None):
-    #logger.info('---------[command]:!br\n')
     await api_google_search(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
 async def br(context, count: str=None):
-    #logger.info('---------[command]:!br\n')
     await e_br(client, conn, context, count)
 
 @client.command(pass_context=True, name="slots", aliases=["slot"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
 async def slots(context, count: str=None):
-    #logger.info('---------[command]:!slots\n')
     await e_slots(client, conn, context, count)
 
 @client.command(pass_context=True, name="rep", help="Выразить свое почтение.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def rep(context, who: discord.Member=None):
-    #logger.info('---------[command]:!rep\n')
     await f_rep(client, conn, context, who)
 
 @client.command(pass_context=True, name="setall")
 @is_it_me()
 async def setall(context, role_id: str=None):
-    #logger.info('---------[command]:!setall\n')
     message = context.message
     role = discord.utils.get(message.server.roles, id=role_id)
     if not role:
@@ -729,7 +716,6 @@ async def unban(context, whos: str=None, reason: str=None):
 async def start(context, channel_id: str=None, *, name: str=None):
     if not channel_id:
         return
-    #logger.info('---------[command]:!start\n')
     message = context.message
     em = discord.Embed(colour=0xC5934B)
     request_channel = client.get_channel(channel_id)
@@ -766,7 +752,6 @@ async def start(context, channel_id: str=None, *, name: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin_or_dev()
 async def stop(context):
-    #logger.info('---------[command]:!stop\n')
     message = context.message
     em = discord.Embed(colour=0xC5934B)
     if message.channel.is_private:
@@ -791,37 +776,31 @@ async def stop(context):
 @client.command(pass_context=True, name="clear", hidden=True, help="Удалить последние сообщения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def clear(context, count: int=None, who: discord.Member=None):
-    #logger.info('---------[command]:!clear\n')
     await a_clear(client, conn, context, count, who)
 
 @client.command(pass_context=True, name="about", help="Показать информацию о боте.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def about(context):
-    #logger.info('---------[command]:!about\n')
     await o_about(client, conn, context)
 
 @client.command(pass_context=True, name="like")
 @commands.cooldown(1, 10, commands.BucketType.user)
 async def like(context):
-    #logger.info('---------[command]:!like\n')
     await o_like(client, conn, context)
 
 @client.command(pass_context=True, name="list")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def list(context, page: int=None):
-    #logger.info('---------[command]:!list\n')
     await o_list(client, conn, context, page)
 
 @client.command(pass_context=True, name="invite", help="Получить ссылку на добавление бота себе на сервер.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def invite(context):
-    #logger.info('---------[command]:!invite\n')
     await o_invite(client, conn, context)
 
 @client.command(pass_context=True, name="giveaway", help="Начать розыгрыш.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def giveaway(context, count: int=300, message: str="Розыгрыш!"):
-	#logger.info('---------[command]:!giveaway\n')
 	global conn
 	await f_giveaway(client, conn, context, count, message)
 
