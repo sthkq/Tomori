@@ -157,7 +157,19 @@ async def on_member_join(member):
     # global ddosers
     dat = await conn.fetchrow("SELECT discord_id FROM black_list WHERE discord_id = '{discord_id}'".format(discord_id=member.id))
     if dat:
-        await client.ban(member)
+        try:
+            await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
+            await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
+            await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
+        except:
+            pass
+        try:
+            await client.ban(member)
+        except:
+            try:
+                await client.kick(member)
+            except:
+                pass
     logger.info("{0.server.name} | {0.server.id} ({delta} дней) joined at server - {0.name} | {0.id}".format(member, delta=(datetime.utcnow() - member.created_at).days))
     # if not member.server.id in ddosers.keys():
     #     ddosers[member.server.id] = []
@@ -342,11 +354,13 @@ async def load_bl(context):
         loggers.info(line[len(line) - 1])
         line1 = f.readline()
     f.close()
+    count = 0
     for s in bl_list:
         dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(s))
         if not dat:
             await conn.execute("INSERT INTO black_list(discord_id) VALUES('{}')".format(s))
-    em.description = "Черный список обновлен."
+            count += 1
+    em.description = "Черный список обновлен.\nДобавлено {count} аккаунтов".format(count=count)
     await client.send_message(message.channel, embed=em)
 
 @client.command(pass_context=True, name="load_black", hidden=True, help="Добавить даунов в черный список из файла.")

@@ -9,13 +9,11 @@ import random
 import copy
 import json
 import asyncpg
+import imghdr
 from discord.ext import commands
 from config.settings import settings
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageFont, ImageDraw, ImageSequence, ImageFilter
 from PIL.GifImagePlugin import getheader, getdata
-from PIL import ImageFont
-from PIL import ImageDraw
-from PIL import ImageSequence
 from functools import partial
 import aiohttp
 from io import BytesIO
@@ -24,15 +22,15 @@ from cogs.const import *
 from cogs.locale import *
 
 
-mask = Image.new('L', (250, 250), 0)
+mask = Image.new('L', (364, 364), 0)
 draws = ImageDraw.Draw(mask)
-draws.ellipse((0, 0) + (150, 150), fill=255)
-draws.ellipse((100, 0) + (250, 150), fill=255)
-draws.ellipse((100, 100) + (250, 250), fill=255)
-draws.ellipse((0, 100) + (150, 250), fill=255)
-draws.rectangle(((0, 75), (250, 175)), fill=255)
-draws.rectangle(((75, 0), (175, 250)), fill=255)
-mask = mask.resize((250, 250), Image.ANTIALIAS)
+draws.ellipse((0, 0) + (40, 40), fill=255)
+draws.ellipse((324, 0) + (364, 40), fill=255)
+draws.ellipse((0, 324) + (40, 364), fill=255)
+draws.ellipse((324, 324) + (364, 364), fill=255)
+draws.rectangle(((0, 20), (364, 344)), fill=255)
+draws.rectangle(((20, 0), (344, 364)), fill=255)
+mask = mask.resize((364, 364), Image.ANTIALIAS)
 
 mask_top = Image.new('L', (269, 269), 0)
 draws_top = ImageDraw.Draw(mask_top)
@@ -46,7 +44,7 @@ mask_top_back = mask_top_back.resize((549, 549), Image.ANTIALIAS)
 
 
 
-async def f_me(client, conn, context):
+async def f_me(client, conn, context, who):
     message = context.message
     server_id = message.server.id
     const = await conn.fetchrow("SELECT server_money, is_me, locale FROM settings WHERE discord_id = '{}'".format(server_id))
@@ -67,67 +65,152 @@ async def f_me(client, conn, context):
     except:
         pass
     await client.send_typing(message.channel)
-    who = message.author
-    dat = await conn.fetchrow("SELECT name, cash, xp_count, kiss_count, punch_count, five_count, fuck_count, drink_count, messages, wink_count, reputation, hug_count, sex_count, background FROM users WHERE discord_id = '{}'".format(who.id))
+    if not who:
+        who = message.author
+    dat = await conn.fetchrow("SELECT * FROM users WHERE discord_id = '{}'".format(who.id))
     if not dat:
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dat = await conn.fetchrow("SELECT name, cash, xp_count, kiss_count, punch_count, five_count, fuck_count, drink_count, messages, wink_count, reputation, hug_count, sex_count, background FROM users WHERE discord_id = '{}'".format(who.id))
-    background = dat[13]
+        dat = await conn.fetchrow("SELECT * FROM users WHERE discord_id = '{}'".format(who.id))
+    background = dat["background"]
     if not background:
         background = random.choice(background_list)
-        await conn.execute("UPDATE users SET background = '{}' WHERE discord_id = '{}'".format(random.choice(background_list), who.id))
-    cash_rank = await conn.fetchrow("SELECT COUNT(DISTINCT cash) AS qty FROM users WHERE cash > {}".format(dat[1]))
-    rep_rank = await conn.fetchrow("SELECT COUNT(DISTINCT reputation) AS qty FROM users WHERE reputation > {}".format(dat[10]))
-    xp_rank = await conn.fetchrow("SELECT COUNT(DISTINCT xp_count) AS qty FROM users WHERE xp_count > {}".format(dat[2]))
+        await conn.execute("UPDATE users SET background = '{back}' WHERE discord_id = '{id}'".format(back=random.choice(background_list), id=who.id))
+    cash_rank = await conn.fetchrow("SELECT COUNT(DISTINCT cash) AS qty FROM users WHERE cash > {}".format(dat["cash"]))
+    rep_rank = await conn.fetchrow("SELECT COUNT(DISTINCT reputation) AS qty FROM users WHERE reputation > {}".format(dat["reputation"]))
+    xp_rank = await conn.fetchrow("SELECT COUNT(DISTINCT xp_count) AS qty FROM users WHERE xp_count > {}".format(dat["xp_count"]))
 #================================================== stats 1
-    actions = "Поцелован(-а): {}\n".format(dat[3]) + "Обнят(-а): {}\n".format(dat[11]) + "Трахнут(-а): {}\n".format(dat[12]) + "Получил(-а) леща: {}\n".format(dat[4]) + "Дал(-а) пять: {}\n".format(dat[5]) + "Подмигнул(-а): {}\n".format(dat[9]) + "Показал(-а) фак: {}\n".format(dat[6]) + "Уходил(-а) в запой: {}\n".format(dat[7])
-#================================================== stats 2
-    xp_graph = ''
     xp_lvl = 0
-    l = 0
     i = 1
-    if dat[2] > 0:
-        while dat[2] >= (i * (i + 1) * 5):
+    if dat["xp_count"] > 0:
+        while dat["xp_count"] >= (i * (i + 1) * 5):
             xp_lvl = xp_lvl + 1
             i = i + 1
-        l = ((dat[2] - (i * (i - 1) * 5)) * 5) // (i * 10)
-        if dat[2] == (i * (i + 1) * 5 - 1):
-            l += 1
+    xp_count = "{}/{}".format(dat["xp_count"], ((xp_lvl + 1) * (xp_lvl + 2) * 5))
+    xp_lvl = str(xp_lvl)
 #==================================================
     back = Image.open("cogs/stat/backgrounds/{}".format(background))
     draw_b = ImageDraw.Draw(back)
     under = Image.open("cogs/stat/backgrounds/under.png")
 
-    font_lvl = ImageFont.truetype("cogs/stat/FuturaBold.ttf", 150)
-    font_small = ImageFont.truetype("cogs/stat/FuturaBold.ttf", 20)
-    font_big = ImageFont.truetype("cogs/stat/FuturaBold.ttf", 58)
-    font_name = ImageFont.truetype("cogs/stat/FuturaBold.ttf", 50)
-    font_actions = ImageFont.truetype("cogs/stat/FuturaBold.ttf", 35)
+    font_right = ImageFont.truetype("cogs/stat/Lato.ttf", 16)
+    font_xp_count = ImageFont.truetype("cogs/stat/WhitneyBold.ttf", 37)
 
     ava_url = who.avatar_url
     if not ava_url:
         ava_url = who.default_avatar_url
     response = requests.get(ava_url)
     avatar = Image.open(BytesIO(response.content))
-    avatar = avatar.resize((250, 250));
-    bigsize = (avatar.size[0] * 3, avatar.size[1] * 3)
+    avatar = avatar.resize((364, 364))
     avatar.putalpha(mask)
+    avatar = avatar.resize((91, 91))
+    back = back.filter(ImageFilter.GaussianBlur(1))
     back.paste(under, (0, 0), under)
-    back.paste(avatar, (744, 494), avatar)
+    back.paste(avatar, (355, 151), avatar)
 
 
-    draw_b.text((int(853 - (len(str(xp_lvl))-1)*35), 60), "{}".format(xp_lvl), (255, 255, 255), font=font_lvl)
-    draw_b.text((498, 705), "{}".format(int((datetime.utcnow() - who.joined_at).days)), (255, 255, 255), font=font_small)
-    draw_b.text((586, 730), "{}".format(dat[8]), (255, 255, 255), font=font_small)
-    draw_b.text((130, 6), "{}".format(dat[10]), (255, 255, 255), font=font_big)
-    draw_b.text((205, 93), "{}".format(dat[1]), (255, 255, 255), font=font_big)
-    draw_b.text((95, 640), "{}".format(dat[0][:20]), (255, 255, 255), font=font_name)
-    draw_b.text((18, 375), "{}".format(actions), (255, 255, 255), font=font_actions)
-    draw_b.text((411, 6), "{}/{}".format(dat[2], (xp_lvl+1)*(xp_lvl+2)*5), (255, 255, 255), font=font_big)
-    draw_b.text((97, 66), "#{}".format(rep_rank[0]+1), (255, 255, 255), font=font_small)
-    draw_b.text((395, 66), "#{}".format(xp_rank[0]+1), (255, 255, 255), font=font_small)
-    draw_b.text((100, 153), "#{}".format(cash_rank[0]+1), (255, 255, 255), font=font_small)
-    draw_b.text((129, 726), "{}ms".format(int((datetime.utcnow() - message.timestamp).microseconds / 1000)), (255, 255, 255), font=font_small)
+
+    halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
+    ImageDraw.Draw(halo).text(
+        (400-font_xp_count.getsize(xp_count)[0]/2, 335-font_xp_count.getsize(xp_count)[1]/2),
+        xp_count,
+        (0, 0, 0),
+        font=font_xp_count
+    )
+    kernel = [
+        0, 1, 2, 1, 0,
+        1, 2, 4, 2, 1,
+        2, 4, 8, 4, 1,
+        1, 2, 4, 2, 1,
+        0, 1, 2, 1, 0
+    ]
+    kernelsum = sum(kernel)
+    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.5 * kernelsum)
+    blurred_halo = halo.filter(myfilter)
+    ImageDraw.Draw(blurred_halo).text(
+        (400-font_xp_count.getsize(xp_count)[0]/2, 335-font_xp_count.getsize(xp_count)[1]/2),
+        xp_count,
+        (255, 255, 255),
+        font=font_xp_count
+    )
+    back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
+    draw = ImageDraw.Draw(back)
+
+    draw.text(
+        (703-font_right.getsize(xp_lvl)[0]/2, 71-font_right.getsize(xp_lvl)[1]/2),
+        xp_lvl,
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (703-font_right.getsize(str(dat["reputation"]))[0]/2, 118-font_right.getsize(str(dat["reputation"]))[1]/2),
+        str(dat["reputation"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (703-font_right.getsize(str(dat["cash"]))[0]/2, 353-font_right.getsize(str(dat["cash"]))[1]/2),
+        str(dat["cash"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["drink_count"]))[0], 353-font_right.getsize(str(dat["drink_count"]))[1]/2),
+        str(dat["drink_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["fuck_count"]))[0], 306-font_right.getsize(str(dat["fuck_count"]))[1]/2),
+        str(dat["fuck_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["wink_count"]))[0], 259-font_right.getsize(str(dat["wink_count"]))[1]/2),
+        str(dat["wink_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["five_count"]))[0], 212-font_right.getsize(str(dat["five_count"]))[1]/2),
+        str(dat["five_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["punch_count"]))[0], 165-font_right.getsize(str(dat["punch_count"]))[1]/2),
+        str(dat["punch_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["hug_count"]))[0], 118-font_right.getsize(str(dat["hug_count"]))[1]/2),
+        str(dat["hug_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    draw.text(
+        (140-font_right.getsize(str(dat["kiss_count"]))[0], 71-font_right.getsize(str(dat["kiss_count"]))[1]/2),
+        str(dat["kiss_count"]),
+        (0, 0, 0),
+        font=font_right
+    )
+    name = u"{}".format(who.display_name)
+    name_size = 1
+    font_name = ImageFont.truetype("cogs/stat/Lato.ttf", name_size)
+    while font_name.getsize(name)[0] < 150:
+        name_size += 1
+        font_name = ImageFont.truetype("cogs/stat/Lato.ttf", name_size)
+        if name_size == 18:
+            break
+    name_size -= 1
+    font_name = ImageFont.truetype("cogs/stat/Lato.ttf", name_size)
+    draw.text(
+        (400-font_name.getsize(name)[0]/2, 255-font_name.getsize(name)[1]/2),
+        name,
+        (0, 0, 0),
+        font=font_name
+    )
 
     back.save('cogs/stat/return/{}.png'.format(message.author.id))
     await client.upload("cogs/stat/return/{}.png".format(message.author.id))

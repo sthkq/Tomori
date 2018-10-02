@@ -145,7 +145,7 @@ async def o_server(client, conn, context):
     message = context.message
     server_id = message.server.id
     server = message.server
-    const = await conn.fetchrow("SELECT em_color, prefix, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT em_color, prefix, locale, bank, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -171,7 +171,12 @@ async def o_server(client, conn, context):
     )
     em.add_field(
         name=locale[lang]["other_server_prefix"],
-        value=const[1],
+        value=const["prefix"],
+        inline=True
+    )
+    em.add_field(
+        name=locale[lang]["other_server_bank"],
+        value=str(const["bank"]),
         inline=True
     )
     em.add_field(
@@ -199,7 +204,7 @@ async def o_server(client, conn, context):
         value=str(len(server.emojis)),
         inline=True
     )
-    em.set_image(url=message.server.icon_url)
+    em.set_thumbnail(url=message.server.icon_url)
     await client.send_message(message.channel, embed=em)
     return
 
@@ -483,7 +488,7 @@ async def o_help(client, conn, context):
     if const["is_avatar"]:
         com_other += "``avatar``, "
     com_other += "``report``, ``server``, ``invite``, ``about``, "
-    com_adm += "``start``, ``stop``, "
+    com_adm += "``start``, ``stop``, ``pay``, "
     com_mon += "``like``, ``list``, "
     if com_adm != "":
         em.add_field(name="Admin", value=com_adm[:-2], inline=False)
@@ -658,12 +663,11 @@ async def o_set(client, conn, context, arg1, arg2, args):
             return
         if args:
             arg2 = arg2 + " " + args
-        _roles = message.server.roles
-        roles = []
-        for role  in _roles:
-            roles.append(role.id)
-        arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
-        if not arg2.isdigit() or not arg2 in roles:
+        role = discord.utils.get(message.server.roles, name=arg2)
+        if not role:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            role = discord.utils.get(message.server.roles, id=arg2)
+        if not role:
             em.description = locale[lang]["other_incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
@@ -673,18 +677,18 @@ async def o_set(client, conn, context, arg1, arg2, args):
         dat = await conn.fetchrow("SELECT prefix FROM settings WHERE discord_id = '{}'".format(message.server.id))
         if dat:
             await conn.execute("UPDATE settings SET autorole_id = '{role_id}' WHERE discord_id = '{server_id}'".format(
-                role_id=arg2,
+                role_id=role.id,
                 server_id=message.server.id
             ))
         else:
             await conn.execute("INSERT INTO settings(name, discord_id, autorole_id) VALUES('{name}', '{id}', '{role}')".format(
                 name=clear_name(message.server.name[:50]),
                 id=message.server.id,
-                role=arg2
+                role=role.id
             ))
         em.description = locale[lang]["other_autorole_success_response"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
-            role_id=arg2
+            role_id=role.id
         )
         await client.send_message(message.channel, embed=em)
         return
@@ -718,8 +722,6 @@ async def o_set(client, conn, context, arg1, arg2, args):
             arg2 = arg2.rstrip()
         else:
             args = args[0]
-        logg.info("arg2 = {arg2}".format(arg2=arg2))
-        logg.info("args = {args}".format(args=args))
         role = discord.utils.get(message.server.roles, name=arg2)
         if not role:
             arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())

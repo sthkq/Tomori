@@ -372,7 +372,7 @@ async def a_kick(client, conn, context, who, reason):
     server_id = message.server.id
     author = message.author
     const = await conn.fetchrow("SELECT em_color, is_kick, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -380,8 +380,8 @@ async def a_kick(client, conn, context, who, reason):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_kick"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -440,8 +440,8 @@ async def a_ban(client, conn, context, who, reason):
     server = message.server
     server_id = message.server.id
     author = message.author
-    const = await conn.fetchrow("SELECT em_color, is_kick, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
+    const = await conn.fetchrow("SELECT em_color, is_ban, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -449,8 +449,8 @@ async def a_ban(client, conn, context, who, reason):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_ban"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -510,7 +510,7 @@ async def a_unban(client, conn, context, whos, reason):
     server_id = message.server.id
     author = message.author
     const = await conn.fetchrow("SELECT em_color, is_kick, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -518,8 +518,8 @@ async def a_unban(client, conn, context, whos, reason):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_ban"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return

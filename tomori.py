@@ -25,7 +25,7 @@ from cogs.api import *
 
 
 __name__ = "Tomori"
-__version__ = "3.20.1"
+__version__ = "3.23.0"
 
 
 logger = logging.getLogger('tomori')
@@ -113,6 +113,11 @@ def is_it_admin():
         if ctx.message.author == ctx.message.server.owner:
             return True
         return any(role.permissions.administrator for role in ctx.message.author.roles)
+    return commands.check(predicate)
+
+def is_it_owner():
+    def predicate(ctx):
+        return True if ctx.message.author == ctx.message.server.owner else False
     return commands.check(predicate)
 
 def is_it_admin_or_dev():
@@ -473,6 +478,12 @@ async def buy(context, *, value: str):
 async def shop(context, page: int=None):
     await e_shop(client, conn, context, page)
 
+@client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_admin()
+async def pay(context, count: str):
+    await e_pay(client, conn, context, count)
+
 @client.command(pass_context=True, name="say", hidden=True, help="Напишет ваш текст.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
@@ -686,8 +697,8 @@ async def avatar(context, who: discord.Member=None):
 
 @client.command(pass_context=True, name="me", help="Вывести статистику пользователя картинкой.")
 @commands.cooldown(1, 15, commands.BucketType.user)
-async def me(context):
-    await f_me(client, conn, context)
+async def me(context, who: discord.Member=None):
+    await f_me(client, conn, context, who)
 
 @client.command(pass_context=True, name="unfriend")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -850,7 +861,7 @@ async def on_message(message):
                 id=message.author.id)
             )
             if str(dat["xp_count"]+1) in xp_lvlup_list.keys():
-                await u_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1))
+                client.loop.create_task(u_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1)))
         await conn.execute("UPDATE users SET messages = {messages} WHERE discord_id = '{id}'".format(
             messages=dat["messages"]+1,
             id=message.author.id)

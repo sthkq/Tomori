@@ -258,7 +258,7 @@ async def e_br(client, conn, context, count):
         if count == 'all':
             summ = dat[0]
         elif dat[0] < int(count):
-            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
             em.add_field(
                 name=locale[lang]["global_follow_us"],
                 value=tomori_links,
@@ -286,7 +286,7 @@ async def e_br(client, conn, context, count):
             await client.send_message(message.channel, embed=em)
     else:
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
-        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
             value=tomori_links,
@@ -331,7 +331,7 @@ async def e_slots(client, conn, context, count):
         if count == 'all':
             summ = dat[0]
         elif dat[0] < int(count):
-            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
             em.add_field(
                 name=locale[lang]["global_follow_us"],
                 value=tomori_links,
@@ -400,7 +400,7 @@ async def e_slots(client, conn, context, count):
             )
     else:
         await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
-        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
             value=tomori_links,
@@ -412,7 +412,7 @@ async def e_slots(client, conn, context, count):
 async def e_buy(client, conn, context, value):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT em_color, locale, bank FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -450,7 +450,7 @@ async def e_buy(client, conn, context, value):
         user = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
         if user:
             if int(dat["condition"]) > user["cash"]:
-                em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
+                em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
                 em.add_field(
                     name=locale[lang]["global_follow_us"],
                     value=tomori_links,
@@ -467,13 +467,15 @@ async def e_buy(client, conn, context, value):
                     await client.send_message(message.channel, embed=em)
                     return
                 await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=user["cash"] - dat["condition"], id=message.author.id))
+                if dat["condition"] > 0:
+                    await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] + dat["condition"], id=message.server.id))
                 em.description = locale[lang]["economy_role_response"].format(
                     who=message.author.mention,
                     role=role.mention
                 )
         else:
             await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
-            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
+            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
             em.add_field(
                 name=locale[lang]["global_follow_us"],
                 value=tomori_links,
@@ -489,7 +491,7 @@ async def e_buy(client, conn, context, value):
 async def e_shop(client, conn, context, page):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT em_color, locale, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -534,5 +536,67 @@ async def e_shop(client, conn, context, page):
         em.set_footer(text=locale[lang]["other_footer_page"].format(number=page, length=pages))
     else:
         em.description = locale[lang]["global_list_is_empty"]
+    await client.send_message(message.channel, embed=em)
+    return
+
+async def e_pay(client, conn, context, count):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT em_color, locale, bank, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    count = count[:20].lower()
+    if count == "all":
+        count = const["bank"]
+    else:
+        if not count.isdigit():
+            em.description = locale[lang]["global_not_number"].format(clear_name(message.author.display_name+"#"+message.author.discriminator))
+            await client.send_message(message.channel, embed=em)
+            return
+        count = int(count)
+    if count == 0:
+        em.description = locale[lang]["global_cant_select_zero"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    user = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if user:
+        if count > const["bank"]:
+            em.description = locale[lang]["other_pay_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
+            em.add_field(
+                name=locale[lang]["global_follow_us"],
+                value=tomori_links,
+                inline=False
+            )
+        else:
+            await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=user["cash"] + count, id=message.author.id))
+            await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] - count, id=message.server.id))
+            em.description = locale[lang]["economy_pay_response"].format(
+                who=message.author.mention,
+                count=count,
+                money=const["server_money"]
+            )
+    else:
+        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
+        em.add_field(
+            name=locale[lang]["global_follow_us"],
+            value=tomori_links,
+            inline=False
+        )
     await client.send_message(message.channel, embed=em)
     return
