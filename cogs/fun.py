@@ -673,9 +673,9 @@ async def f_sex(client, conn, context, who):
 async def are_you_nitty(client, lang, who, message):
     em = discord.Embed(colour=0xC5934B)
     if not who:
-        em.description = locale[lang]["global_not_display_name_on_user"].format(message.author.display_name+"#"+message.author.discriminator)
+        em.description = locale[lang]["global_not_mention_on_user"].format(message.author.display_name+"#"+message.author.discriminator)
     elif who.bot:
-        em.description = locale[lang]["global_bot_display_nameed"].format(
+        em.description = locale[lang]["global_bot_mentioned"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
             bot=who.display_name[:50]
         )

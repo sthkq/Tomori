@@ -6,6 +6,7 @@ from datetime import datetime, date
 import string
 import random
 import copy
+import os
 import json
 import asyncpg
 from discord.ext import commands
@@ -113,59 +114,15 @@ async def a_say(client, conn, context, value):
         await client.delete_message(message)
     except:
         pass
-    try:
-        ret = json.loads(value)
-        if ret and isinstance(ret, dict):
-            # if "description" in ret.keys():
-            #     em.description = ret["description"]
-            # if "title" in ret.keys():
-            #     em.title = ret["title"]
-            # if "url" in ret.keys():
-            #     em.url = ret["url"]
-            em = discord.Embed(**ret)
-            if "author" in ret.keys():
-                em.set_author(
-                    name=ret["author"].get("name"),
-                    url=ret["author"].get("url", discord.Embed.Empty),
-                    icon_url=ret["author"].get("icon_url", discord.Embed.Empty)
-                )
-            if "footer" in ret.keys():
-                em.set_footer(
-                    text=ret["footer"].get("text", discord.Embed.Empty),
-                    icon_url=ret["footer"].get("icon_url", discord.Embed.Empty)
-                )
-            if "image" in ret.keys():
-                em.set_image(
-                    url=ret["image"]
-                )
-            if "thumbnail" in ret.keys():
-                em.set_thumbnail(
-                    url=ret["thumbnail"]
-                )
-            if "fields" in ret.keys():
-                for field in ret["fields"]:
-                    try:
-                        em.add_field(
-                            name=field.get("name"),
-                            value=field.get("value"),
-                            inline=field.get("inline", False)
-                        )
-                    except:
-                        pass
-        if "text" in ret.keys():
-            text = ret["text"]
-        else:
-            text = None
-        await client.send_message(message.channel, content=text, embed=em)
-    except:
-        await client.send_message(message.channel, value)
+    text, em = await get_embed(value)
+    await client.send_message(message.channel, content=text, embed=em)
     return
 
-async def a_say_embed(client, conn, context):
+async def a_send(client, conn, context, url):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, is_say, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
+    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -173,8 +130,8 @@ async def a_say_embed(client, conn, context):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -182,9 +139,22 @@ async def a_say_embed(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    em.description = message.content[11:]
-    await client.send_message(message.channel, embed=em)
+    await client.send_typing(message.channel)
+    try:
+        name = "files/send/"+message.author.id+"_"+url.rsplit("/", maxsplit=1)[1]
+        f = open(name,"wb")
+        req = requests.get(url)
+        f.write(req.content)
+        f.close()
+    except:
+        em.description = locale[lang]["global_check_url"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            url=url
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    await client.upload(name)
+    os.remove(name)
     return
 
 async def a_find_user(client, conn, context, member_id):
@@ -277,7 +247,7 @@ async def a_clear(client, conn, context, count, who):
             if role.permissions.manage_messages or role.permissions.administrator:
                 break
         else:
-            em.description = locale[lang]["global_not_allowed"].format(author.display_name) #{}, у тебя нет прав
+            em.description = locale[lang]["global_not_allowed"].format(message.author.display_name+"#"+message.author.discriminator) #{}, у тебя нет прав
             await client.send_message(message.channel, embed=em)
             return
     if not count:
@@ -394,11 +364,15 @@ async def a_kick(client, conn, context, who, reason):
             if role.permissions.kick_members or role.permissions.administrator:
                 break
         else:
-            em.description = locale[lang]["global_not_allowed"].format(author.display_name)
+            em.description = locale[lang]["global_not_allowed"].format(message.author.display_name+"#"+message.author.discriminator)
             await client.send_message(message.channel, embed=em)
             return
     if not who:
         em.description = locale[lang]["global_not_display_name_on_user"].format(clear_name(message.author.display_name+"#"+message.author.discriminator))
+        await client.send_message(message.channel, embed=em)
+        return
+    if who == server.owner or any(role.permissions.administrator for role in who.roles):
+        em.description = locale[lang]["admin_can_not_kick"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
     if not reason:
@@ -463,11 +437,15 @@ async def a_ban(client, conn, context, who, reason):
             if role.permissions.ban_members or role.permissions.administrator:
                 break
         else:
-            em.description = locale[lang]["global_not_allowed"].format(author.display_name)
+            em.description = locale[lang]["global_not_allowed"].format(message.author.display_name+"#"+message.author.discriminator)
             await client.send_message(message.channel, embed=em)
             return
     if not who:
         em.description = locale[lang]["global_not_display_name_on_user"].format(clear_name(message.author.display_name+"#"+message.author.discriminator))
+        await client.send_message(message.channel, embed=em)
+        return
+    if who == server.owner or any(role.permissions.administrator for role in who.roles):
+        em.description = locale[lang]["admin_can_not_ban"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
     if not reason:
@@ -532,7 +510,7 @@ async def a_unban(client, conn, context, whos, reason):
             if role.permissions.ban_members or role.permissions.administrator:
                 break
         else:
-            em.description = locale[lang]["global_not_allowed"].format(author.display_name)
+            em.description = locale[lang]["global_not_allowed"].format(message.author.display_name+"#"+message.author.discriminator)
             await client.send_message(message.channel, embed=em)
             return
     who = None

@@ -22,10 +22,11 @@ from cogs.other import *
 from cogs.util import *
 from cogs.locale import *
 from cogs.api import *
+from cogs.ids import *
 
 
 __name__ = "Tomori"
-__version__ = "3.23.0"
+__version__ = "3.23.4"
 
 
 logger = logging.getLogger('tomori')
@@ -169,6 +170,64 @@ async def working():
         await asyncio.sleep(WORK_DELAY)
 
 
+async def monitoring():
+    await client.wait_until_ready()
+    while not client.is_closed:
+        latest = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY like_time DESC LIMIT 10")
+        top = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10")
+        for channel_id in monitoring_channels.keys():
+            channel = client.get_channel(channel_id)
+            if not channel:
+                continue
+            latest_embed = discord.Embed(color=16766208)
+            top_embed = discord.Embed(color=65411)
+            for index, server in enumerate(latest):
+                member_count = 0
+                serv = client.get_server(server["discord_id"])
+                if serv:
+                    member_count = serv.member_count
+                latest_embed.add_field(
+                    name="#{index} {name}".format(
+                        index=index+1,
+                        name=server["name"]
+                    ),
+                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
+                        likes=server["likes"],
+                        member_count=member_count,
+                        id=server["discord_id"],
+                        link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
+                    ),
+                    inline=True
+                )
+            for index, server in enumerate(top):
+                member_count = 0
+                serv = client.get_server(server["discord_id"])
+                if serv:
+                    member_count = serv.member_count
+                top_embed.add_field(
+                    name="#{index} {name}".format(
+                        index=index+1,
+                        name=server["name"]
+                    ),
+                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
+                        likes=server["likes"],
+                        member_count=member_count,
+                        id=server["discord_id"],
+                        link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
+                    ),
+                    inline=True
+                )
+            try:
+                await client.purge_from(channel, limit=10)
+            except:
+                pass
+            latest_embed.title = monitoring_channels[channel_id].get("latest")
+            top_embed.title = monitoring_channels[channel_id].get("top")
+            await client.send_message(channel, embed=top_embed)
+            await client.send_message(channel, embed=latest_embed)
+        await asyncio.sleep(3600)
+
+
 async def statuses():
     await client.wait_until_ready()
     while not client.is_closed:
@@ -178,8 +237,8 @@ async def statuses():
         users_count = 0
         try:
             for server in client.servers:
-                if server.id in not_log_servers:
-                    continue
+                # if server.id in not_log_servers:
+                #     continue
                 users_count += len(server.members)
         except:
             pass
@@ -251,13 +310,10 @@ async def on_socket_raw_receive(raw_msg):
     data = msg.get("d")
     if not data:
         return
-    emoji = data.get("emoji")
-    user_id = data.get("user_id")
-    message_id = data.get("message_id")
     if type == "MESSAGE_REACTION_ADD":
-        await u_reaction_add(client, conn, logger, emoji, user_id, message_id)
+        await u_reaction_add(client, conn, logger, data)
     if type == "MESSAGE_REACTION_REMOVE":
-        await u_reaction_remove(client, conn, logger, emoji, user_id, message_id)
+        await u_reaction_remove(client, conn, logger, data)
 
 
 
@@ -297,10 +353,18 @@ async def on_member_join(member):
             except:
                 pass
 
+    if member.server.id in welcome_responses_dm.keys():
+        text, em = await dict_to_embed(welcome_responses_dm.get(member.server.id))
+        try:
+            await client.send_message(member, content=text, embed=em)
+        except:
+            pass
+
     if dat:
         role = discord.utils.get(member.server.roles, id=dat["autorole_id"])
         if role:
             await client.add_roles(member, role)
+
         welcome_channel = client.get_channel(dat["welcome_channel_id"])
         if welcome_channel:
             message = "{who}, добро пожаловать на сервер {server}! Нас уже {count} человек.".format(
@@ -346,6 +410,7 @@ async def on_ready():
     print('------')
     client.loop.create_task(statuses())
     client.loop.create_task(dbl_updating())
+    client.loop.create_task(monitoring())
     global top_servers
     top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
     #await client.change_presence(game=discord.Game(name='Помощь - !help'))
@@ -409,7 +474,7 @@ async def timely(context):
 async def work(context):
     await e_work(client, conn, context)
 
-@client.command(pass_context=True, name="help", aliases=['commands', 'command', 'helps'], hidden=True, help="Показать список команд.")
+@client.command(pass_context=True, name="help", aliases=['h'], hidden=True, help="Показать список команд.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def helps(context):
     await o_help(client, conn, context)
@@ -483,6 +548,12 @@ async def shop(context, page: int=None):
 @is_it_admin()
 async def pay(context, count: str):
     await e_pay(client, conn, context, count)
+
+@client.command(pass_context=True, name="send", help="Переслать файл от имени бота.")
+@commands.cooldown(1, 15, commands.BucketType.user)
+@is_it_admin()
+async def _send(context, url: str):
+    await a_send(client, conn, context, url)
 
 @client.command(pass_context=True, name="say", hidden=True, help="Напишет ваш текст.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -572,6 +643,50 @@ async def dele(context, role_id: str=None):
 async def invite_server(context, server_id: str=None):
     await u_invite_server(client, conn, context, server_id)
 
+@client.command(pass_context=True, name="leave_server", hidden=True)
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def leave_server(context, server_id: str):
+    server = client.get_server(server_id)
+    if server:
+        await client.leave_server(server)
+
+@client.command(pass_context=True, name="песель", hidden=True)
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def pesel(context, *, input: str):
+    message = context.message
+    await client.send_typing(message.channel)
+    em = discord.Embed(colour=0xC5934B)
+    em.set_author(name="Tomori Compiller", icon_url="https://cdn.discordapp.com/attachments/489522367253708821/497857314192097290/kisspng-nao-tomori-jjir-takaj-yuu-otosaka-ayumi-otos-nao-tomori-5b08dab1d414f6.731102531527306929868.png")
+    try:
+        pes = 1
+        pantsu = int(input)
+        rep = 0
+        if pantsu < 0:
+            em.description = "Песель ничтожество."
+            await client.send_message(message.channel, embed=em)
+            return
+        iter_count = 10000
+        while rep >= pantsu:
+            iter_count -= 1
+            if iter_count == 0:
+                break
+            if pantsu > rep:
+                pes += rep
+                pantsu -= 1
+            else:
+                pes -= 1
+                break
+            if pes == 100:
+                break
+            rep += 1
+        em.description = "Уважение Песеля: {pes}".format(pes=pes)
+        await client.send_message(message.channel, embed=em)
+    except Exception as e:
+        em.description = str(e)
+        await client.send_message(message.channel, embed=em)
+
+
 @client.command(pass_context=True, name="invite_channel", hidden=True, help="Создать инвайт на данный канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
@@ -579,7 +694,7 @@ async def invite_channel(context, channel_id: str=None):
     await u_invite_channel(client, conn, context, channel_id)
 
 @client.command(pass_context=True, name="report", help="Отправить репорт.")
-@commands.cooldown(1, 1, commands.BucketType.user)
+@commands.cooldown(1, 300, commands.BucketType.user)
 async def report(context, mes: str=None):
     await o_report(client, conn, context)
 

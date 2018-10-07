@@ -2,6 +2,7 @@ import discord
 import asyncio
 import re
 import logging
+import json
 
 
 punch_list = ['https://media.giphy.com/media/1n753Z1ZeGdkwxtYHo/giphy.gif',
@@ -373,6 +374,14 @@ prefix_list = [
 	'_'
 ]
 
+
+short_locales = {
+"en": "english",
+"ru": "russian",
+"ua": "ukrainian"
+}
+
+
 black_filename_list = [
 "2018-03-15_10.26.23_1",
 "2018-03-16_01.41.19_1",
@@ -525,6 +534,7 @@ not_log_servers = [
 ]
 
 log_join_leave_server_channel_id = "493196075352457247"
+log_join_leave_server_id = "480689184814792704"
 admin_server_id = "327029562535968768"
 
 #             Ананасовая Печенюха         Unknown           Питерская Илита            Teris                Oddy38
@@ -542,12 +552,12 @@ uptimes = 0
 global top_servers
 top_servers = []
 
-tomori_links = '[Проголосовать](https://discordbots.org/bot/491605739635212298/vote "за Томори") \
-[Patreon](https://www.patreon.com/tomori_discord "Поддержать донатом") \
-[YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Канал творческого объединения Tomori Project") \
-[Telegram](https://t.me/TomoriDiscord "Наш telegram канал") \
-[Сайт](https://discord.band "Наш сайт") \
-[ВК](https://vk.com/tomori_discord "Наша группа в ВК")'
+tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for Tomori") \
+[Patreon](https://www.patreon.com/tomori_discord "Donate") \
+[YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Tomori Project\'s channel") \
+[Telegram](https://t.me/TomoriDiscord "Our telegram channel") \
+[Website](https://discord.band "Our website") \
+[VK](https://vk.com/tomori_discord "Our group on vk.com")'
 
 def clear_name(name):
 	return re.sub(r'[\';"\\]+', '', name)
@@ -570,3 +580,118 @@ finally:
 handler.setFormatter(logging.Formatter(
     '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logg.addHandler(handler)
+
+
+async def get_embed(value):
+    try:
+        ret = json.loads(value)
+        if ret and isinstance(ret, dict):
+            em = discord.Embed(**ret)
+            if "author" in ret.keys():
+                em.set_author(
+                    name=ret["author"].get("name"),
+                    url=ret["author"].get("url", discord.Embed.Empty),
+                    icon_url=ret["author"].get("icon_url", discord.Embed.Empty)
+                )
+            if "footer" in ret.keys():
+                em.set_footer(
+                    text=ret["footer"].get("text", discord.Embed.Empty),
+                    icon_url=ret["footer"].get("icon_url", discord.Embed.Empty)
+                )
+            if "image" in ret.keys():
+                em.set_image(
+                    url=ret["image"]
+                )
+            if "thumbnail" in ret.keys():
+                em.set_thumbnail(
+                    url=ret["thumbnail"]
+                )
+            if "fields" in ret.keys():
+                for field in ret["fields"]:
+                    try:
+                        em.add_field(
+                            name=field.get("name"),
+                            value=field.get("value"),
+                            inline=field.get("inline", False)
+                        )
+                    except:
+                        pass
+        if "text" in ret.keys():
+            text = ret["text"]
+        else:
+            text = None
+    except:
+        text = value
+        em = None
+    return text, em
+
+
+async def dict_to_embed(ret):
+    try:
+        if ret:
+            em = discord.Embed(**ret)
+            if "author" in ret.keys():
+                em.set_author(
+                    name=ret["author"].get("name"),
+                    url=ret["author"].get("url", discord.Embed.Empty),
+                    icon_url=ret["author"].get("icon_url", discord.Embed.Empty)
+                )
+            if "footer" in ret.keys():
+                em.set_footer(
+                    text=ret["footer"].get("text", discord.Embed.Empty),
+                    icon_url=ret["footer"].get("icon_url", discord.Embed.Empty)
+                )
+            if "image" in ret.keys():
+                em.set_image(
+                    url=ret["image"]
+                )
+            if "thumbnail" in ret.keys():
+                em.set_thumbnail(
+                    url=ret["thumbnail"]
+                )
+            if "fields" in ret.keys():
+                for field in ret["fields"]:
+                    try:
+                        em.add_field(
+                            name=field.get("name"),
+                            value=field.get("value"),
+                            inline=field.get("inline", False)
+                        )
+                    except:
+                        pass
+        if "text" in ret.keys():
+            text = ret["text"]
+        else:
+            text = None
+    except:
+        text = str(ret)
+        em = None
+    return text, em
+
+
+
+
+
+
+
+
+
+
+
+welcome_responses_dm = {
+# ОКД (чета с ссср)
+"485447833932005379": {
+      "text": "Здесь описание интересностей сервера - <#490177759507775489>",
+      "description": "**А правила очень просты: **\n- Нельзя нарушать законы РФ\n- Нельзя переходить на личности в оскорблениях\n- Нельзя рекламировать сервера дискорда.\n\nРады видеть вас на нашем сервере! Всего доброго!",
+      "color": 12948299
+    },
+# КАКТАМНОВОСТИ
+"496507405732020224": {
+	  "description": "**Добро пожаловать на новостной сервер КАКТАМНОВОСТИ.**\n\nПрежде чем ты начнешь знакомиться с остальными участниками, пожалуйста,  ознакомься с полезной информацией на канале <#496697194649223175>\n\n*Тут могут быть БУФЕРА, ТРЕШ и НЕ БУДЕТ НАСТЫРНЫХ ПРАВЕДНИКОВ, (возможно).\nНадеюсь тебе у нас понравится!\nЖелаем приятного время КАКТАМпровождения.*\n\nЧто ж, веселись и приглашай друзей! :blush:\nПокедова, увидимся на сервере :heart: ",
+	  "author": {
+	    "name": "КАКТАМНОВОСТИ",
+	    "icon_url": "https://images-ext-2.discordapp.net/external/Nne3hrU-e2gDmobjirCrOJO3dVfeTSiYx6Y2l4cf1EE/https/cdn.discordapp.com/icons/496507405732020224/5c81c2acec3621896e4a7f1a15947975.jpg"
+	  },
+	  "color": 3553599
+	}
+}

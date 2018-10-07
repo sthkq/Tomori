@@ -13,6 +13,7 @@ from discord.ext import commands
 from cogs.locale import *
 from cogs.const import *
 from cogs.help import *
+from cogs.ids import *
 from cogs.discord_hooks import Webhook
 
 support_url = "https://discord.gg/tomori"
@@ -337,10 +338,11 @@ async def o_list(client, conn, context, page):
                 index=(page-1)*10+index+1,
                 name=server["name"]
             ),
-            value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id})".format(
+            value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
                 likes=server["likes"],
                 member_count=member_count,
                 id=server["discord_id"],
+                link_message=_locale["other_list_link_message"]
             ),
             inline=True
         )
@@ -351,7 +353,7 @@ async def o_list(client, conn, context, page):
 async def o_report(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT em_color, locale, prefix, locale FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -369,12 +371,15 @@ async def o_report(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    for s in admin_list:
-        try:
-            await client.send_message(discord.utils.get(client.get_server(admin_server_id).members, id=s), "[server - {}, id - {}] (chat - {}, id - {}) <name - {}, id - {}, display_name - {}> <=> {}".format(message.server.name, message.server.id, message.channel.name, message.channel.id, message.author.display_name[:50], message.author.id, message.author.display_name, message.content))
-        except:
-            pass
-    em.title='{} отправил репорт!'.format(message.author.display_name+"#"+message.author.discriminator)
+    eD = discord.Embed(color = 0xC5934B, title = "Report from user:", description = message.content)
+    eD.add_field(name = "Server", value = "Name: " + message.server.name + "\n" + "Id: `" + message.server.id + "`")
+    eD.add_field(name = "Settings", value = "Locale: \"" + const["locale"] + "\"\n" + "Prefix: `" + const["prefix"] + "`")
+    eD.add_field(name = "Chat", value = "Name: " + message.channel.name + "\n" + "Id: `" + message.channel.id + "`")
+    eD.add_field(name = "User", value = "Name: " + message.author.name + "\n" + "Id: `" + message.author.id + "`\n" + "Display Name: " + message.author.display_name)
+    eD.set_author(name = message.author.name, icon_url= message.author.avatar_url)
+    await client.send_message(client.get_channel(report_channel_id), embed=eD)
+
+    em.title = locale[lang]["other_report_sent_success"].format(who=message.author.display_name+"#"+message.author.discriminator)
     em.set_image(url='https://media.giphy.com/media/xTkcESPybY7bmlKL7O/giphy.gif')
     await client.send_message(message.channel, embed=em)
     return
@@ -431,8 +436,10 @@ async def o_help(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    if message.content.startswith(const["prefix"]+"help "):
-        await h_check_help(client, message, locale[lang], em, const["prefix"])
+    if message.content.startswith(const["prefix"]+"help ") or message.content.startswith(const["prefix"]+"h "):
+        await h_check_help(client, conn, message)
+        return
+    if not message.content == const["prefix"]+"help":
         return
     em.title = locale[lang]["other_help_title"]
     em.description = locale[lang]["other_help_desc"].format(const["name"], const["prefix"])
@@ -488,7 +495,7 @@ async def o_help(client, conn, context):
     if const["is_avatar"]:
         com_other += "``avatar``, "
     com_other += "``report``, ``server``, ``invite``, ``about``, "
-    com_adm += "``start``, ``stop``, ``pay``, "
+    com_adm += "``send``, ``start``, ``stop``, ``pay``, "
     com_mon += "``like``, ``list``, "
     if com_adm != "":
         em.add_field(name="Admin", value=com_adm[:-2], inline=False)
@@ -775,10 +782,13 @@ async def o_set(client, conn, context, arg1, arg2, args):
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
+            em.description += "\n" + locale[lang]["other_you_can_try"] + " `%s`" % "`, `".join(short_locales.keys())
             await client.send_message(message.channel, embed=em)
             return
         if args:
             arg2 = arg2 + " " + args
+        arg2 = arg2.lower()
+        arg2 = short_locales.get(arg2, arg2)
         if not arg2 in locale.keys():
             em.description = locale[lang]["other_incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,

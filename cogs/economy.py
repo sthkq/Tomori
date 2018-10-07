@@ -434,6 +434,10 @@ async def e_buy(client, conn, context, value):
     if not role:
         value = re.sub(r'[<@#&!>]+', '', value.lower())
         role = discord.utils.get(message.server.roles, id=value)
+    if value.isdigit() and not value == "0":
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'shop' AND server_id = '{server_id}' ORDER BY condition::int DESC OFFSET {offset}".format(server_id=server_id, offset=int(value)-1))
+        if dat:
+            role = discord.utils.get(message.server.roles, id=dat["name"])
     if not role:
         em.description = locale[lang]["global_role_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
@@ -466,9 +470,9 @@ async def e_buy(client, conn, context, value):
                     )
                     await client.send_message(message.channel, embed=em)
                     return
-                await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=user["cash"] - dat["condition"], id=message.author.id))
-                if dat["condition"] > 0:
-                    await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] + dat["condition"], id=message.server.id))
+                await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=user["cash"] - int(dat["condition"]), id=message.author.id))
+                if int(dat["condition"]) > 0:
+                    await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] + int(dat["condition"]), id=message.server.id))
                 em.description = locale[lang]["economy_role_response"].format(
                     who=message.author.mention,
                     role=role.mention
@@ -525,11 +529,11 @@ async def e_shop(client, conn, context, page):
         return
     dat = await conn.fetch("SELECT * FROM mods WHERE type = 'shop' AND server_id = '{server_id}' ORDER BY condition::int DESC LIMIT 25 OFFSET {offset}".format(server_id=server_id, offset=(page-1)*25))
     if dat:
-        for role in dat:
+        for index, role in enumerate(dat):
             _role = discord.utils.get(message.server.roles, id=role["name"])
             if _role:
                 em.add_field(
-                    name=_role.name,
+                    name="#{index} {name}".format(index=index+1+(page-1)*25, name=_role.name),
                     value=role["condition"],
                     inline=True
                 )

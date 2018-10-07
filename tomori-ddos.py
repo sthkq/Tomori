@@ -18,7 +18,7 @@ from cogs.const import *
 
 
 __name__ = "Tomori-ddos"
-__version__ = "3.14.0"
+__version__ = "3.15.0"
 
 
 
@@ -104,18 +104,19 @@ async def kicking():
     while not client.is_closed:
         for member in ban_members:
             try:
-                await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-                await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
-                await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха [Cookie]#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
-            except:
-                pass
-            try:
                 await client.ban(member)
             except:
                 try:
                     await client.kick(member)
                 except:
                     pass
+        for member in ban_members:
+            try:
+                await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
+                await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
+                # await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха [Cookie]#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
+            except:
+                pass
         #await asyncio.wait(client.ban(member) for member in ban_members)
         ban_members = []
         await asyncio.sleep(10)
@@ -154,6 +155,7 @@ async def on_voice_state_update(before, after):
 async def on_member_join(member):
     if member.server.id in not_log_servers:
         return
+    logger.info("{0.server.name} | {0.server.id} ({delta} дней) joined at server - {0.name} | {0.id}".format(member, delta=(datetime.utcnow() - member.created_at).days))
     # global ddosers
     dat = await conn.fetchrow("SELECT discord_id FROM black_list WHERE discord_id = '{discord_id}'".format(discord_id=member.id))
     if dat:
@@ -170,7 +172,6 @@ async def on_member_join(member):
                 await client.kick(member)
             except:
                 pass
-    logger.info("{0.server.name} | {0.server.id} ({delta} дней) joined at server - {0.name} | {0.id}".format(member, delta=(datetime.utcnow() - member.created_at).days))
     # if not member.server.id in ddosers.keys():
     #     ddosers[member.server.id] = []
     # ddosers[member.server.id].append(member.id)
@@ -200,7 +201,7 @@ async def on_ready():
     #client.loop.create_task(ddosing())
     client.loop.create_task(kicking())
     await client.change_presence(game=discord.Game(type=3, name="DDOS-protection"))
-    await client.send_message(client.get_server(log_join_leave_server_channel_id).get_member("430383342182203392"), "DDOS-protection acquired.")
+    await client.send_message(client.get_server(log_join_leave_server_id).get_member("430383342182203392"), "DDOS-protection acquired.")
 
 
 @client.command(pass_context=True, name="get_bans", hidden=True, help="Перенести забаненных юзеров в черный список.")
@@ -460,14 +461,14 @@ async def clear_servers(context):
     global ban_members
     count = 0
     for server in client.servers:
-        bl_list = server.members
-        i = 0
-        for member in bl_list:
+        if server.id in not_log_servers:
+            continue
+        for member in server.members:
             dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
             if dat:
                 ban_members.append(member)
-        count += 1
-    em.description = "{} cерверов очищено.".format(count)
+                count += 1
+    em.description = "{count} пользователей добавлено в очередь блокировки".format(count=count)
     await client.send_message(message.author, embed=em)
 
 @client.event

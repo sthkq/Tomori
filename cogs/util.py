@@ -231,10 +231,32 @@ async def u_news(client, conn, context, message_id):
     await client.send_message(channel_from, embed=em)
     await client.send_message(channel_from, "Успешно отправлено на {} серверов!".format(server_count))
 
-async def u_reaction_add(client, conn, logger, emoji, user_id, message_id):
+async def u_reaction_add(client, conn, logger, data):
+    emoji = data.get("emoji")
+    user_id = data.get("user_id")
+    message_id = data.get("message_id")
+    server_id = data.get("guild_id")
+    server = client.get_server(server_id)
+    user = server.get_member(user_id)
+    data = await conn.fetch("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'reaction' AND name = '{name}'".format(
+        server_id=server.id,
+        name=message_id
+    ))
+    for react in data:
+        if not react["condition"] == emoji['name']:
+            continue
+        roles = []
+        for dat in data:
+            role = discord.utils.get(server.roles, id=dat["value"])
+            if role:
+                roles.append(role)
+            await client.remove_roles(user, *roles)
+        role = discord.utils.get(server.roles, id=react["value"])
+        if not role:
+            logger.error("doesn't exists role id - {id}".format(id=react["value"]))
+            return
+        await client.add_roles(user, role)
     if message_id in reaction_mes_ids:
-        server = client.get_server("377890113352630282")
-        user = server.get_member(user_id)
         logger.info("add reaction | message_id - {0} | server_name - {1.name} | server_id - {1.id} | user_name - {2.name} | user_mention - {2.mention} | emoji - {3}\n".format(message_id, server, user, emoji['name']))
         roles = []
         if emoji["id"] == emoji_zverolud_id:
@@ -260,7 +282,25 @@ async def u_reaction_add(client, conn, logger, emoji, user_id, message_id):
                 roles.append(role)
         await client.add_roles(user, *roles)
 
-async def u_reaction_remove(client, conn, logger, emoji, user_id, message_id):
+async def u_reaction_remove(client, conn, logger, data):
+    emoji = data.get("emoji")
+    user_id = data.get("user_id")
+    message_id = data.get("message_id")
+    server_id = data.get("guild_id")
+    server = client.get_server(server_id)
+    user = server.get_member(user_id)
+    react = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'reaction' AND name = '{name}' AND condition = '{condition}'".format(
+        server_id=server.id,
+        name=message_id,
+        condition=emoji["name"]
+    ))
+    if react:
+        role = discord.utils.get(server.roles, id=react["value"])
+        if not role:
+            logger.error("doesn't exists role id - {id}".format(id=react["value"]))
+            return
+        if role in user.roles:
+            await client.remove_roles(user, role)
     if message_id in reaction_mes_ids:
         server = client.get_server("377890113352630282")
         user = server.get_member(user_id)
@@ -553,6 +593,7 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
         await client.delete_message(msg)
     except:
         pass
+
 
 
 
