@@ -63,7 +63,7 @@ async def u_voice_state_update(client, conn, logger, before, after):
             private = await client.create_channel(after.server, "{name}".format(name=clear_name(after.display_name[:50])), for_everyone, for_after, type=discord.ChannelType.voice)
             await client.edit_channel(private, user_limit=2)
             await client.move_channel(private,  0)
-            dat = await conn.fetchrow("SELECT name FROM users WHERE  discord_id = '{0.id}'".format(before))
+            dat = await conn.fetchrow("SELECT name FROM users WHERE discord_id = '{0.id}'".format(before))
             if dat:
                 await conn.execute("UPDATE users SET voice_channel_id = '{0}' WHERE discord_id = '{1.id}'".format(private.id, before))
             else:

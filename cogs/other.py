@@ -595,26 +595,34 @@ async def o_set(client, conn, context, arg1, arg2, args):
             )
             await client.send_message(message.channel, embed=em)
             return
-        dat = await conn.fetchrow("SELECT cash, background FROM users WHERE discord_id = '{}'".format(message.author.id))
+        if message.server.id in local_stats_servers:
+            stats_type = message.server.id
+        else:
+            stats_type = "global"
+        dat = await conn.fetchrow("SELECT cash, background FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            stats_type=stats_type,
+            id=message.author.id
+        ))
         if dat:
-            if dat[0] < background_change_price:
-                em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[2])
+            if dat["cash"] < background_change_price:
+                em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
                 await client.send_message(message.channel, embed=em)
                 return
-            if dat[1] == arg2:
+            if dat["background"] == arg2:
                 em.description = locale[lang]["other_backgrounds_already_has"].format(who=message.author.display_name+"#"+message.author.discriminator)
                 await client.send_message(message.channel, embed=em)
                 return
-            await conn.execute("UPDATE users SET cash = {cash}, background = '{back}' WHERE discord_id = '{id}'".format(
+            await conn.execute("UPDATE users SET cash = {cash}, background = '{back}' WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
                 cash=dat[0] - background_change_price,
                 back=arg2,
+                stats_type=stats_type,
                 id=message.author.id
             ))
             em.description = locale[lang]["other_backgrounds_success_response"].format(
                 who=message.author.display_name+"#"+message.author.discriminator
             )
         else:
-            await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+            await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
             em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[1])
         await client.send_message(message.channel, embed=em)
         return

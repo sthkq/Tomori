@@ -11,6 +11,7 @@ import json
 import asyncpg
 from discord.ext import commands
 from cogs.const import *
+from cogs.ids import *
 from cogs.locale import *
 
 async def a_enable(client, conn, context):
@@ -301,14 +302,22 @@ async def a_take(client, conn, context, who, count):
         em.description =locale[lang]["global_not_number"].format(clear_name(message.author.display_name+"#"+message.author.discriminator)) #{}, введенное значение не является числом.
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if dat:
         counts = dat[0] - count
         if counts < 0:
             counts = 0
-        await conn.execute("UPDATE users SET cash = {} WHERE discord_id = '{}'".format(counts, who.id))
+        await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            cash=counts,
+            stats_type=stats_type,
+            id=who.id
+        ))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
     em.description = locale[lang]["admin_you_dont_like_him"].format(who.display_name, count, const[2]) #{} не понравился админу. Штраф - {} {}
     await client.send_message(message.channel, embed=em)
     return

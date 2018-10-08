@@ -142,6 +142,11 @@ def is_it_support():
         return ctx.message.author.id in support_list
     return commands.check(predicate)
 
+def is_it_local_server():
+    def predicate(ctx):
+        return True if ctx.message.server.id in local_stats_servers else False
+    return commands.check(predicate)
+
 
 
 
@@ -495,23 +500,6 @@ async def ping(context):
 async def webhook(context, name: str=None, *, value: str=None):
     await o_webhook(client, conn, context, name, value)
 
-# @client.command(pass_context=True, name="delete", help="Удалить себя из базы.")
-# @commands.cooldown(1, 1, commands.BucketType.user)
-# async def delete(context):
-#     #logger.info('---------[command]:!delete\n')
-#     message = context.message
-#     try:
-#         await client.delete_message(message)
-#     except:
-#         pass
-#     em = discord.Embed(colour=0xC5934B)
-#     try:
-#         await conn.execute("DELETE FROM users WHERE discord_id = '{}'".format(message.author.id))
-#         em.description = "{} удален из базы.".format(message.author.name)
-#     except:
-#         em.description = "Не удалось удалить из базы {}.".format(message.author.name)
-#     await client.send_message(message.channel, embed=em)
-
 @client.command(pass_context=True, name="createvoice", help="Создать войс канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def createvoice(context):
@@ -700,8 +688,15 @@ async def report(context, mes: str=None):
 
 @client.command(pass_context=True, name="give", help="Передать свои печенюхи.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def give(context, who: discord.Member=None, count: str=None):
+async def give(context, who: discord.Member, count: str):
     await e_give(client, conn, context, who, count)
+
+@client.command(pass_context=True, name="gift")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_local_server()
+@is_it_owner()
+async def gift(context, count: int):
+    await e_gift(client, conn, context, count)
 
 @client.command(pass_context=True, name="top", help="Показать топ юзеров.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -730,37 +725,37 @@ async def cash(context):
 
 @client.command(pass_context=True, name="sex", help="Трахнуть.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def sex(context, who: discord.Member=None):
+async def sex(context, who: discord.Member):
     await f_sex(client, conn, context, who)
 
 @client.command(pass_context=True, name="hug", help="Обнять.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def hug(context, who: discord.Member=None):
+async def hug(context, who: discord.Member):
     await f_hug(client, conn, context, who)
 
 @client.command(pass_context=True, name="wink", help="Подмигнуть.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def wink(context, who: discord.Member=None):
+async def wink(context, who: discord.Member):
     await f_wink(client, conn, context, who)
 
 @client.command(pass_context=True, name="five", help="Дать пять.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def five(context, who: discord.Member=None):
+async def five(context, who: discord.Member):
     await f_five(client, conn, context, who)
 
 @client.command(pass_context=True, name="fuck", help="Показать фак.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def fuck(context, who: discord.Member=None):
+async def fuck(context, who: discord.Member):
     await f_fuck(client, conn, context, who)
 
 @client.command(pass_context=True, name="punch", help="Дать леща.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def punch(context, who: discord.Member=None):
+async def punch(context, who: discord.Member):
     await f_punch(client, conn, context, who)
 
 @client.command(pass_context=True, name="kiss", help="Поцеловать.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def kiss(context, who: discord.Member=None):
+async def kiss(context, who: discord.Member):
     await f_kiss(client, conn, context, who)
 
 @client.command(pass_context=True, name="drink", help="Уйти в запой.")
@@ -770,32 +765,32 @@ async def drink(context):
 
 @client.command(pass_context=True, name="shiki", help="Найти аниме на Shikimori.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def shiki(context, *, name: str=None):
+async def shiki(context, *, name: str):
     await api_shiki(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def google_search(context, *, name: str=None):
+async def google_search(context, *, name: str):
     await api_google_search(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
-async def br(context, count: str=None):
+async def br(context, count: str):
     await e_br(client, conn, context, count)
 
 @client.command(pass_context=True, name="slots", aliases=["slot"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
-async def slots(context, count: str=None):
+async def slots(context, count: str):
     await e_slots(client, conn, context, count)
 
 @client.command(pass_context=True, name="rep", help="Выразить свое почтение.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def rep(context, who: discord.Member=None):
+async def rep(context, who: discord.Member):
     await f_rep(client, conn, context, who)
 
 @client.command(pass_context=True, name="setall")
 @is_it_me()
-async def setall(context, role_id: str=None):
+async def setall(context, role_id: str):
     message = context.message
     role = discord.utils.get(message.server.roles, id=role_id)
     if not role:
@@ -818,28 +813,28 @@ async def me(context, who: discord.Member=None):
 @client.command(pass_context=True, name="unfriend")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
-async def unfriend(context, who_id: str=None, * , reason: str=None):
+async def unfriend(context, who_id: str, * , reason: str=None):
     await a_unfriend(client, conn, context, who_id, reason)
 
 @client.command(pass_context=True, name="kick", help="Кикнуть пользователя.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def kick(context, who: discord.Member=None, reason: str=None):
+async def kick(context, who: discord.Member, reason: str=None):
     await a_kick(client, conn, context, who, reason)
 
 @client.command(pass_context=True, name="ban", help="Забанить пользователя.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def ban(context, who: discord.Member=None, reason: str=None):
+async def ban(context, who: discord.Member, reason: str=None):
     await a_ban(client, conn, context, who, reason)
 
 @client.command(pass_context=True, name="unban", help="Разбанить пользователя.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def unban(context, whos: str=None, reason: str=None):
+async def unban(context, whos: str, reason: str=None):
     await a_unban(client, conn, context, whos, reason)
 
 @client.command(pass_context=True, name="start", help="Test.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin_or_dev()
-async def start(context, channel_id: str=None, *, name: str=None):
+async def start(context, channel_id: str, *, name: str=None):
     if not channel_id:
         return
     message = context.message
@@ -960,7 +955,12 @@ async def on_message(message):
         )
         await client.send_message(message.channel, embed=em)
 
-    dat = await conn.fetchrow("SELECT xp_time, xp_count, messages, cash FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+
+    dat = await conn.fetchrow("SELECT xp_time, xp_count, messages, cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     t = int(time.time())
     if dat:
         if (int(t) - dat["xp_time"]) >= serv["xp_cooldown"]:
@@ -968,21 +968,23 @@ async def on_message(message):
             count = 2
             if any(server_id == server["discord_id"] for server in top_servers):
                 count *= 2
-            await conn.execute("UPDATE users SET xp_time = {time}, xp_count = {count}, messages = {messages}, cash = {cash} WHERE discord_id = '{id}'".format(
+            await conn.execute("UPDATE users SET xp_time = {time}, xp_count = {count}, messages = {messages}, cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+                stats_type=stats_type,
                 time=t,
                 count=dat["xp_count"] + 1,
                 messages=dat["messages"]+1,
                 cash=dat["cash"] + count,
-                id=message.author.id)
-            )
+                id=message.author.id
+            ))
             if str(dat["xp_count"]+1) in xp_lvlup_list.keys():
                 client.loop.create_task(u_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1)))
-        await conn.execute("UPDATE users SET messages = {messages} WHERE discord_id = '{id}'".format(
+        await conn.execute("UPDATE users SET messages = {messages} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            stats_type=stats_type,
             messages=dat["messages"]+1,
             id=message.author.id)
         )
     else:
-        await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background) VALUES('{}', '{}', '{}', {}, {}, {}, '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(background_list)))
+        await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background, stats_type) VALUES('{}', '{}', '{}', {}, {}, {}, '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(background_list), stats_type))
 
     if message.content.startswith(serv["prefix"]) or message.content.startswith("!help"):
         await client.process_commands(message)

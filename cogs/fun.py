@@ -19,6 +19,7 @@ import aiohttp
 from io import BytesIO
 from typing import Union
 from cogs.const import *
+from cogs.ids import *
 from cogs.locale import *
 
 
@@ -67,17 +68,25 @@ async def f_me(client, conn, context, who):
     await client.send_typing(message.channel)
     if not who:
         who = message.author
-    dat = await conn.fetchrow("SELECT * FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT * FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dat:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dat = await conn.fetchrow("SELECT * FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dat = await conn.fetchrow("SELECT * FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     background = dat["background"]
     if not background:
         background = random.choice(background_list)
-        await conn.execute("UPDATE users SET background = '{back}' WHERE discord_id = '{id}'".format(back=random.choice(background_list), id=who.id))
-    cash_rank = await conn.fetchrow("SELECT COUNT(DISTINCT cash) AS qty FROM users WHERE cash > {}".format(dat["cash"]))
-    rep_rank = await conn.fetchrow("SELECT COUNT(DISTINCT reputation) AS qty FROM users WHERE reputation > {}".format(dat["reputation"]))
-    xp_rank = await conn.fetchrow("SELECT COUNT(DISTINCT xp_count) AS qty FROM users WHERE xp_count > {}".format(dat["xp_count"]))
+        await conn.execute("UPDATE users SET background = '{back}' WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            back=random.choice(background_list),
+            stats_type=stats_type,
+            id=who.id
+        ))
+    cash_rank = await conn.fetchrow("SELECT COUNT(DISTINCT cash) AS qty FROM users WHERE stats_type = '{}' AND cash > {}".format(stats_type, dat["cash"]))
+    rep_rank = await conn.fetchrow("SELECT COUNT(DISTINCT reputation) AS qty FROM users WHERE stats_type = '{}' AND reputation > {}".format(stats_type, dat["reputation"]))
+    xp_rank = await conn.fetchrow("SELECT COUNT(DISTINCT xp_count) AS qty FROM users WHERE stats_type = '{}' AND xp_count > {}".format(stats_type, dat["xp_count"]))
 #================================================== stats 1
     xp_lvl = 0
     i = 1
@@ -240,11 +249,15 @@ async def f_hug(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
-    dates = await conn.fetchrow("SELECT hug_count FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
+    dates = await conn.fetchrow("SELECT hug_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dates:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dates = await conn.fetchrow("SELECT hug_count FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dates = await conn.fetchrow("SELECT hug_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if dat:
         if (const["hug_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -254,12 +267,12 @@ async def f_hug(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["hug_price"], id=message.author.id))
-            await conn.execute("UPDATE users SET hug_count = {count} WHERE discord_id = '{id}'".format(count=dates["hug_count"] + 1, id=who.id))
+            await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(cash=dat["cash"] - const["hug_price"], stats_type=stats_type, id=message.author.id))
+            await conn.execute("UPDATE users SET hug_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(count=dates["hug_count"] + 1, stats_type=stats_type, id=who.id))
             em.description =  locale[lang]["fun_hug"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(hug_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -292,11 +305,15 @@ async def f_kiss(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
-    dates = await conn.fetchrow("SELECT kiss_count FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
+    dates = await conn.fetchrow("SELECT kiss_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dates:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dates = await conn.fetchrow("SELECT kiss_count FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dates = await conn.fetchrow("SELECT kiss_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if dat:
         if (const["kiss_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -306,12 +323,12 @@ async def f_kiss(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["kiss_price"], id=message.author.id))
-            await conn.execute("UPDATE users SET kiss_count = {count} WHERE discord_id = '{id}'".format(count=dates["kiss_count"] + 1, id=who.id))
+            await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["kiss_price"], id=message.author.id))
+            await conn.execute("UPDATE users SET kiss_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, count=dates["kiss_count"] + 1, id=who.id))
             em.description =  locale[lang]["fun_kiss"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(kiss_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -344,7 +361,11 @@ async def f_five(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash, five_count FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash, five_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     if dat:
         if (const["five_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -354,11 +375,11 @@ async def f_five(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash}, five_count = {count} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["five_price"], count=dat["five_count"]+1, id=message.author.id))
+            await conn.execute("UPDATE users SET cash = {cash}, five_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["five_price"], count=dat["five_count"]+1, id=message.author.id))
             em.description =  locale[lang]["fun_five"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(five_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -391,11 +412,15 @@ async def f_punch(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash FROM users WHERE discord_id = '{}'".format(message.author.id))
-    dates = await conn.fetchrow("SELECT punch_count FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
+    dates = await conn.fetchrow("SELECT punch_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dates:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dates = await conn.fetchrow("SELECT punch_count FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dates = await conn.fetchrow("SELECT punch_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if dat:
         if (const["punch_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -405,12 +430,12 @@ async def f_punch(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["punch_price"], id=message.author.id))
-            await conn.execute("UPDATE users SET punch_count = {count} WHERE discord_id = '{id}'".format(count=dates["punch_count"] + 1, id=who.id))
+            await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["punch_price"], id=message.author.id))
+            await conn.execute("UPDATE users SET punch_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, count=dates["punch_count"] + 1, id=who.id))
             em.description =  locale[lang]["fun_punch"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(punch_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[0])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -443,7 +468,11 @@ async def f_fuck(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash, fuck_count FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash, fuck_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     if dat:
         if (const["fuck_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -453,11 +482,11 @@ async def f_fuck(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash}, fuck_count = {count} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["fuck_price"], count=dat["fuck_count"]+1, id=message.author.id))
+            await conn.execute("UPDATE users SET cash = {cash}, fuck_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["fuck_price"], count=dat["fuck_count"]+1, id=message.author.id))
             em.description =  locale[lang]["fun_fuck"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(fuck_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -480,7 +509,7 @@ async def f_wink(client, conn, context, who):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not const[3]:
+    if not const or not const["is_wink"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -490,7 +519,11 @@ async def f_wink(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash, wink_count FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash, wink_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     if dat:
         if (const["wink_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -500,11 +533,11 @@ async def f_wink(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash}, wink_count = {count} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["wink_price"], count=dat["wink_count"]+1, id=message.author.id))
+            await conn.execute("UPDATE users SET cash = {cash}, wink_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["wink_price"], count=dat["wink_count"]+1, id=message.author.id))
             em.description =  locale[lang]["fun_wink"].format(message.author.mention, who.mention)
             em.set_image(url=random.choice(wink_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -527,7 +560,7 @@ async def f_drink(client, conn, context):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not const[3]:
+    if not const or not const["is_drink"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -535,7 +568,11 @@ async def f_drink(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    dat = await conn.fetchrow("SELECT cash, drink_count FROM users WHERE discord_id = '{}'".format(message.author.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash, drink_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     if dat:
         if (const["drink_price"] > dat["cash"]):
             em.description =  locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
@@ -545,11 +582,11 @@ async def f_drink(client, conn, context):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {cash}, drink_count = {count} WHERE discord_id = '{id}'".format(cash=dat["cash"] - const["drink_price"], count=dat["drink_count"]+1, id=message.author.id))
+            await conn.execute("UPDATE users SET cash = {cash}, drink_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, cash=dat["cash"] - const["drink_price"], count=dat["drink_count"]+1, id=message.author.id))
             em.description =  locale[lang]["fun_drink"].format(message.author.mention)
             em.set_image(url=random.choice(drink_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -571,7 +608,7 @@ async def f_rep(client, conn, context, who):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const["em_color"], 16) + int("0x200", 16))
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     if not const or not const["is_rep"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
@@ -582,14 +619,18 @@ async def f_rep(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT rep_time FROM users WHERE discord_id = '{}'".format(message.author.id))
-    dates = await conn.fetchrow("SELECT reputation FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT rep_time FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
+    dates = await conn.fetchrow("SELECT reputation FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dates:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dates = await conn.fetchrow("SELECT reputation FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dates = await conn.fetchrow("SELECT reputation FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dat:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
-        dat = await conn.fetchrow("SELECT rep_time FROM users WHERE discord_id = '{}'".format(message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
+        dat = await conn.fetchrow("SELECT rep_time FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
     tim = int(time.time()) - dat["rep_time"]
     if tim < const["rep_cooldown"]:
         t=const["rep_cooldown"] - tim
@@ -612,8 +653,16 @@ async def f_rep(client, conn, context, who):
             inline=False
         )
     else:
-        await conn.execute("UPDATE users SET rep_time = {} WHERE discord_id = '{}'".format(int(time.time()), message.author.id))
-        await conn.execute("UPDATE users SET reputation = {} WHERE discord_id = '{}'".format(dates["reputation"] + 3, who.id))
+        await conn.execute("UPDATE users SET rep_time = {time} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            time=int(time.time()),
+            stats_type=stats_type,
+            id=message.author.id
+        ))
+        await conn.execute("UPDATE users SET reputation = {rep} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+            rep=dates["reputation"] + 3,
+            stats_type=stats_type,
+            id=who.id
+        ))
         em.description =  locale[lang]["fun_rep_success"].format(message.author.mention, who.mention)
     await client.send_message(message.channel, embed=em)
     return
@@ -631,7 +680,7 @@ async def f_sex(client, conn, context, who):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not const[3]:
+    if not const or not const["is_sex"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -641,11 +690,15 @@ async def f_sex(client, conn, context, who):
         pass
     if await are_you_nitty(client, lang, who, message):
         return
-    dat = await conn.fetchrow("SELECT cash, sex_count FROM users WHERE discord_id = '{}'".format(message.author.id))
-    dates = await conn.fetchrow("SELECT sex_count FROM users WHERE discord_id = '{}'".format(who.id))
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT cash, sex_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
+    dates = await conn.fetchrow("SELECT sex_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if not dates:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(who.display_name[:50]), who.id))
-        dates = await conn.fetchrow("SELECT sex_count FROM users WHERE discord_id = '{}'".format(who.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(who.display_name[:50]), who.id, stats_type))
+        dates = await conn.fetchrow("SELECT sex_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     if dat:
         if (const[2] > dat[0]):
             em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
@@ -655,12 +708,20 @@ async def f_sex(client, conn, context, who):
                 inline=False
             )
         else:
-            await conn.execute("UPDATE users SET cash = {} WHERE discord_id = '{}'".format(dat[0] - const[2], message.author.id))
-            await conn.execute("UPDATE users SET sex_count = {} WHERE discord_id = '{}'".format(dates[0] + 1, who.id))
+            await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+                cash=dat["cash"] - const["sex_price"],
+                stats_type=stats_type,
+                id=message.author.id
+            ))
+            await conn.execute("UPDATE users SET sex_count = {count} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
+                count=dates["sex_count"] + 1,
+                stats_type=stats_type,
+                id=who.id
+            ))
             em.description =  "{} трахнул {}".format(message.author.display_name+"#"+message.author.discriminator, who.display_name+"#"+who.discriminator)
             em.set_image(url=random.choice(sex_list))
     else:
-        await conn.execute("INSERT INTO users(name, discord_id) VALUES('{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id))
+        await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
         em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -709,7 +770,11 @@ async def f_top(client, conn, context, page):
     except:
         pass
     await client.send_typing(message.channel)
-    dat = await conn.fetchrow("SELECT COUNT(name) FROM users")
+    if message.server.id in local_stats_servers:
+        stats_type = message.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT COUNT(name) FROM users WHERE stats_type = '{}'".format(stats_type))
     all_count = dat[0]
     pages = (((all_count - 1) // 5) + 1)
     if not page:
@@ -722,7 +787,7 @@ async def f_top(client, conn, context, page):
         em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, avatar_url, xp_count FROM users ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(offset=(page-1)*5))
+    dat = await conn.fetch("SELECT name, discord_id, avatar_url, xp_count FROM users WHERE stats_type = '{stats_type}' ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(stats_type=stats_type, offset=(page-1)*5))
 #==================================================
     img = Image.open("cogs/stat/top5.png")
     back = Image.open("cogs/stat/top5.png")
@@ -753,8 +818,9 @@ async def f_top(client, conn, context, page):
                 member = server.get_member(user["discord_id"])
                 if member and member.avatar_url:
                     ava_url = member.avatar_url
-                    await conn.execute("UPDATE users SET avatar_url = '{url}' WHERE discord_id = '{id}'".format(
+                    await conn.execute("UPDATE users SET avatar_url = '{url}' WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
                         url=ava_url,
+                        stats_type=stats_type,
                         id=user["discord_id"]
                     ))
                     break
