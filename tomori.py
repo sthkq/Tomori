@@ -26,7 +26,7 @@ from cogs.ids import *
 
 
 __name__ = "Tomori"
-__version__ = "3.23.4"
+__version__ = "3.23.5"
 
 
 logger = logging.getLogger('tomori')
@@ -896,7 +896,7 @@ async def stop(context):
 
 @client.command(pass_context=True, name="clear", hidden=True, help="Удалить последние сообщения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def clear(context, count: int=None, who: discord.Member=None):
+async def clear(context, count: int=1, who: discord.Member=None):
     await a_clear(client, conn, context, count, who)
 
 @client.command(pass_context=True, name="about", help="Показать информацию о боте.")
@@ -946,6 +946,8 @@ async def on_message(message):
     serv = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = \'{}\'".format(server_id))
     if message.author.bot or not serv or not serv["is_enable"]:
         return
+
+    client.loop.create_task(check_words(client, message))
 
     if ('уруру' in message.content.lower()) and not message.author.bot and (message.author.id == '414485183396315146' or message.author.id == '306055749023563778'):
         em = discord.Embed(colour=0xC5934B)

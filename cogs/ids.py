@@ -23,5 +23,5 @@ report_channel_id = "497413275789688833"
 
 
 local_stats_servers = [
-
+"485400595235340303"
 ]

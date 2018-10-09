@@ -168,4 +168,4 @@ async def reload(ctx):
     ctx.bot.load_extension('cogs.music')
     await ctx.message.add_reaction('\N{WHITE HEAVY CHECK MARK}')
 
-bot.run(settings["token"])
+bot.run("NDkwOTkxMDIzMjc1NjM4Nzg0.Dp4ObA.Q3q1EVTuBHf_If4ul5jmbl5ECrg") #Tomori Music Token

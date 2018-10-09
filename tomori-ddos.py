@@ -328,6 +328,12 @@ async def unbl(context, mes: str=None):
         await client.send_message(message.channel, embed=em)
     else:
         await conn.execute("DELETE FROM black_list WHERE discord_id = '{}'".format(mes))
+        for server in client.servers:
+            bans = await client.get_bans(server)
+            for member in bans:
+                if member.id == mes:
+                    await client.unban(server, member)
+                    break
         em.description = "ID '{}' удален из черного списка.".format(mes)
         await client.send_message(message.channel, embed=em)
 
