@@ -7,6 +7,7 @@ import string
 import random
 import copy
 import os
+import re
 import json
 import asyncpg
 from discord.ext import commands
@@ -97,6 +98,16 @@ async def a_disable(client, conn, context):
 async def a_say(client, conn, context, value):
     message = context.message
     server_id = message.server.id
+    temp = value.split(" ", maxsplit=1)
+    channel = message.channel
+    if len(temp) > 1:
+        channel = temp[0]
+        channel = re.sub(r'[<@#&!>]+', '', channel)
+        channel = client.get_channel(channel)
+        if channel:
+            value = temp[1]
+        else:
+            channel = message.channel
     const = await conn.fetchrow("SELECT em_color, is_say, locale FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
@@ -116,7 +127,7 @@ async def a_say(client, conn, context, value):
     except:
         pass
     text, em = await get_embed(value)
-    await client.send_message(message.channel, content=text, embed=em)
+    await client.send_message(channel, content=text, embed=em)
     return
 
 async def a_send(client, conn, context, url):
