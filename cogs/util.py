@@ -9,15 +9,30 @@ import random
 import copy
 import apiai, json
 import asyncpg
+import imghdr
+import os
+from PIL import Image, ImageChops, ImageFont, ImageDraw, ImageSequence, ImageFilter
+from PIL.GifImagePlugin import getheader, getdata
+from functools import partial
+import aiohttp
+from io import BytesIO
+from typing import Union
 from discord.ext import commands
 from config.settings import settings
 from cogs.locale import *
 from cogs.const import *
 
 
-# ADD COLUMN
-# users_info->voice_channel_id
-# settings->is_createvoice
+
+mask = Image.new('L', (1002, 1002), 0)
+draws = ImageDraw.Draw(mask)
+draws.ellipse((486, 5) + (516, 35), fill=255)
+draws.ellipse((486, 967) + (516, 997), fill=255)
+draws.ellipse((5, 486) + (35, 516), fill=255)
+draws.ellipse((967, 486) + (997, 516), fill=255)
+draws.polygon([(516, 15), (486, 15), (15, 486), (15, 516), (486, 987), (516, 987), (987, 516), (987, 486)], fill=255)
+mask = mask.resize((343, 343), Image.ANTIALIAS)
+
 
 global voice_clients
 voice_clients = []
@@ -633,6 +648,28 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
         pass
 
 
+
+async def send_welcome_pic(client, channel, user, const):
+    await client.send_typing(channel)
+    back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(const["welcome_back"]))
+    draw_b = ImageDraw.Draw(back)
+    under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(const["welcome_under"]))
+
+    ava_url = user.avatar_url
+    if not ava_url:
+        ava_url = user.default_avatar_url
+    response = requests.get(ava_url)
+    avatar = Image.open(BytesIO(response.content))
+    avatar = avatar.resize((343, 343))
+    avatar.putalpha(mask)
+    back.paste(under, (0, 0), under)
+    back.paste(avatar, (29, 29), avatar)
+
+    filename = 'cogs/stat/return/welcome/{}.png'.format(user.server.id+'_'+user.id)
+    back.save(filename)
+    await client.send_file(channel, filename)
+    os.remove(filename)
+    return
 
 
 # async def u_check_achievements(client, conn, const, message, key):

@@ -26,7 +26,7 @@ from cogs.ids import *
 
 
 __name__ = "Tomori"
-__version__ = "3.23.5"
+__version__ = "3.24.0"
 
 
 logger = logging.getLogger('tomori')
@@ -354,7 +354,7 @@ async def on_member_join(member):
     logger.info("{0.name} | {0.id} joined at server - {1.name} | {1.id}\n".format(member, member.server))
     if not member.server.id in not_log_servers:
         await client.send_message(client.get_channel('486591862157606913'), "**{2}**\n``({0.name} | {0.mention}) ==> [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
-    dat = await conn.fetchrow("SELECT autorole_id, welcome_channel_id, locale FROM settings WHERE discord_id = '{id}'".format(id=member.server.id))
+    dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{id}'".format(id=member.server.id))
     black = await conn.fetchrow("SELECT * FROM black_list_not_ddos WHERE discord_id = '{id}'".format(id=member.id))
     if black:
         lang = dat["locale"]
@@ -394,12 +394,7 @@ async def on_member_join(member):
 
         welcome_channel = client.get_channel(dat["welcome_channel_id"])
         if welcome_channel:
-            message = "{who}, добро пожаловать на сервер {server}! Нас уже {count} человек.".format(
-                who=member.mention,
-                server=member.server.name,
-                count=len(member.server.members)
-            )
-            await client.send_message(welcome_channel, message)
+            await send_welcome_pic(client, welcome_channel, member, dat)
 
 
 @client.event
@@ -637,6 +632,14 @@ async def add(context, role_id: str=None):
     user = message.author
     await client.delete_message(message)
     await client.add_roles(user, discord.utils.get(message.server.roles, id=role_id))
+
+@client.command(pass_context=True, name="welcome", hidden=True)
+@is_it_me()
+async def welcome(context):
+    message = context.message
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(message.server.id))
+    await client.delete_message(message)
+    await send_welcome_pic(client, message.channel, message.author, const)
 
 @client.command(pass_context=True, name="del", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)

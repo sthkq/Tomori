@@ -214,6 +214,26 @@ help_responses = {
             "usage" : "`{prefix}invite`",
             "rights" : ""
         },
+        "clear" : {
+            "description" : "Удалить последние сообщения",
+            "usage" : "`{prefix}clear <кол-во>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "kick" : {
+            "description" : "Кикнуть пользователя",
+            "usage" : "`{prefix}kick <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "ban" : {
+            "description" : "Забанить пользователя",
+            "usage" : "`{prefix}ban <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "unban" : {
+            "description" : "Разбабанить пользователя",
+            "usage" : "`{prefix}unban <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        }
     },
     "russian" : {
         "command" : "Команда `{command}`",
@@ -408,6 +428,26 @@ help_responses = {
             "description" : "Получить ссылку на добавление Tomori себе на сервер",
             "usage" : "`{prefix}invite`",
             "rights" : ""
+        },
+        "clear" : {
+            "description" : "Удалить последние сообщения",
+            "usage" : "`{prefix}clear <кол-во>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "kick" : {
+            "description" : "Кикнуть пользователя",
+            "usage" : "`{prefix}kick <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "ban" : {
+            "description" : "Забанить пользователя",
+            "usage" : "`{prefix}ban <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+        },
+        "unban" : {
+            "description" : "Разбабанить пользователя",
+            "usage" : "`{prefix}unban <@кто>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
         }
     }
 }
