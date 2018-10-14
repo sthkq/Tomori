@@ -118,16 +118,11 @@ async def api_google_search(client, conn, logger, context, name):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const:
-        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
-        await client.send_message(message.channel, embed=em)
-        return
     try:
         await client.delete_message(message)
     except:
         pass
     dat = google.search(name, 1)
-    logger.info("google = {data}".format(data=dat))
     if not dat:
         em.description = locale[lang]["api_data_not_found"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -135,13 +130,14 @@ async def api_google_search(client, conn, logger, context, name):
         )
         await client.send_message(message.channel, embed=em)
         return
+    logg.info("google = {data}".format(data=str(dat)))
     em.set_footer(text="{name}#{discriminator}".format(
         name=message.author.name,
         discriminator=message.author.discriminator
     ))
     em.add_field(
         name="Response",
-        value=dat,
+        value=str(dat),
         inline=True
     )
     await client.send_message(message.channel, embed=em)

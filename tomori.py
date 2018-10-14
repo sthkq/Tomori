@@ -178,8 +178,8 @@ async def working():
 async def monitoring():
     await client.wait_until_ready()
     while not client.is_closed:
-        latest = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY like_time DESC LIMIT 10")
-        top = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10")
+        latest = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY like_time DESC LIMIT 10")
+        top = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10")
         for channel_id in monitoring_channels.keys():
             channel = client.get_channel(channel_id)
             if not channel:
@@ -191,15 +191,26 @@ async def monitoring():
                 serv = client.get_server(server["discord_id"])
                 if serv:
                     member_count = serv.member_count
+                if not server["invite"] or not await u_check_invite(client, server["invite"]):
+                    link = await u_invite_to_server(client, server["discord_id"])
+                    if link:
+                        await conn.execute("UPDATE settings SET invite = '{link}' WHERE discord_id = '{id}'".format(
+                            link=link,
+                            id=server["discord_id"]
+                        ))
+                    else:
+                        link = "https://discord-server.com/"+server["discord_id"]
+                else:
+                    link = server["invite"]
                 latest_embed.add_field(
                     name="#{index} {name}".format(
                         index=index+1,
                         name=server["name"]
                     ),
-                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
+                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162> **__join__**]({link} \"{link_message}\")".format(
                         likes=server["likes"],
                         member_count=member_count,
-                        id=server["discord_id"],
+                        link=link,
                         link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
                     ),
                     inline=True
@@ -209,15 +220,26 @@ async def monitoring():
                 serv = client.get_server(server["discord_id"])
                 if serv:
                     member_count = serv.member_count
+                if not server["invite"] or not await u_check_invite(client, server["invite"]):
+                    link = await u_invite_to_server(client, server["discord_id"])
+                    if link:
+                        await conn.execute("UPDATE settings SET invite = '{link}' WHERE discord_id = '{id}'".format(
+                            link=link,
+                            id=server["discord_id"]
+                        ))
+                    else:
+                        link = "https://discord-server.com/"+server["discord_id"]
+                else:
+                    link = server["invite"]
                 top_embed.add_field(
                     name="#{index} {name}".format(
                         index=index+1,
                         name=server["name"]
                     ),
-                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
+                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162> **__join__**]({link} \"{link_message}\")".format(
                         likes=server["likes"],
                         member_count=member_count,
-                        id=server["discord_id"],
+                        link=link,
                         link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
                     ),
                     inline=True
@@ -768,10 +790,10 @@ async def drink(context):
 async def shiki(context, *, name: str):
     await api_shiki(client, conn, logger, context, name)
 
-@client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def google_search(context, *, name: str):
-    await api_google_search(client, conn, logger, context, name)
+# @client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
+# @commands.cooldown(1, 1, commands.BucketType.user)
+# async def google_search(context, *, name: str):
+#     await api_google_search(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
@@ -805,7 +827,7 @@ async def setall(context, role_id: str):
 async def avatar(context, who: discord.Member=None):
     await o_avatar(client, conn, context, who)
 
-@client.command(pass_context=True, name="me", help="Вывести статистику пользователя картинкой.")
+@client.command(pass_context=True, name="me", aliases=["profile"], help="Вывести статистику пользователя картинкой.")
 @commands.cooldown(1, 15, commands.BucketType.user)
 async def me(context, who: discord.Member=None):
     await f_me(client, conn, context, who)
@@ -894,7 +916,7 @@ async def stop(context):
     except:
         pass
 
-@client.command(pass_context=True, name="clear", hidden=True, help="Удалить последние сообщения.")
+@client.command(pass_context=True, name="clear", aliases=["cl"], hidden=True, help="Удалить последние сообщения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def clear(context, count: int=1, who: discord.Member=None):
     await a_clear(client, conn, context, count, who)

@@ -327,12 +327,23 @@ async def o_list(client, conn, context, page):
         em.description = _locale["global_list_is_empty"]
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, likes FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
+    dat = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
     for index, server in enumerate(dat):
         member_count = 0
         serv = client.get_server(server["discord_id"])
         if serv:
             member_count = serv.member_count
+        if not server["invite"] or not await u_check_invite(client, server["invite"]):
+            link = await u_invite_to_server(client, server["discord_id"])
+            if link:
+                await conn.execute("UPDATE settings SET invite = '{link}' WHERE discord_id = '{id}'".format(
+                    link=link,
+                    id=server["discord_id"]
+                ))
+            else:
+                link = "https://discord-server.com/"+server["discord_id"]
+        else:
+            link = server["invite"]
         em.add_field(
             name="#{index} {name}".format(
                 index=(page-1)*10+index+1,

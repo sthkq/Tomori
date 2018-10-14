@@ -416,6 +416,41 @@ async def u_check_ddos(client, conn, logger, member):
 
 
 
+async def u_invite_to_server(client, server_id):
+    server = client.get_server(server_id)
+    if not server:
+        return None
+    try:
+        invites = await client.invites_from(server)
+        for invite in invites:
+            if invite.max_age == 0 and invite.max_uses == 0:
+                return invite.url
+        return invites[0].url
+    except:
+        pass
+    try:
+        invite = await client.create_invite(server, max_age=0, max_uses=0)
+        return invite.url
+    except:
+        pass
+    for channel in server.channels:
+        try:
+            invite = await client.create_invite(channel, max_age=0, max_uses=0)
+            if not invite.url:
+                continue
+            return invite.url
+        except:
+            pass
+    else:
+        return None
+
+async def u_check_invite(client, url):
+    try:
+        invite = await client.get_invite(url)
+        return True
+    except:
+        return False
+
 async def u_invite_server(client, conn, context, server_id):
     message = context.message
     try:
@@ -428,17 +463,20 @@ async def u_invite_server(client, conn, context, server_id):
         em.description = "Сервер (ID:{id}) - не существует.".format(id=server_id)
         await client.send_message(message.channel, embed=em)
         return
-    if server.splash_url:
-        em.description = "Сервер (ID:{id}) invite:\n{invite}".format(id=server_id, invite=server.splash_url)
+    try:
+        invites = await client.invites_from(server)
+        for invite in invites:
+            if invite.max_age == 0 and invite.max_uses == 0:
+                em.description = "Сервер (ID:{id}) one of invites:\n{invite}".format(id=server_id, invite=invite.url)
+                await client.send_message(message.channel, embed=em)
+                return
+        em.description = "Сервер (ID:{id}) first of invites:\n{invite}".format(id=server_id, invite=invites[0].url)
         await client.send_message(message.channel, embed=em)
         return
-    # invites = await client.invites_from(server)
-    # if invites:
-    #     em.description = "Сервер (ID:{id}) invite from server:\n{invite}".format(id=server_id, invite=invites[0].url)
-    #     await client.send_message(message.channel, embed=em)
-    #     return
+    except:
+        pass
     try:
-        invite = await client.create_invite(server, max_age=0, max_uses=0)
+        invite = await client.create_invite(server, max_age=0, max_uses=1)
         em.description = "Сервер (ID:{id}) invite created:\n{invite}".format(id=server_id, invite=invite.url)
         await client.send_message(message.channel, embed=em)
         return
@@ -446,7 +484,7 @@ async def u_invite_server(client, conn, context, server_id):
         pass
     for channel in server.channels:
         try:
-            invite = await client.create_invite(channel, max_age=0, max_uses=0)
+            invite = await client.create_invite(channel, max_age=0, max_uses=1)
             if not invite.url:
                 continue
             em.description = "Сервер (ID:{id}) invite to channel {channel_name}:\n{invite}".format(id=server_id, invite=invite.url, channel_name=channel.name)

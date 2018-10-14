@@ -15,398 +15,399 @@ help_responses = {
     "english" : {
         "command" : "Command `{command}`",
         "usage" : "**Usage:**\n",
-        "rights" : "**Rights:**\nНеобходимы права __**Администратора**__",
         "command_not_found" : "Command not found!",
         "help" : {
             "description" : "Show command list",
-            "usage" : "`{prefix}help` - command list\n`{prefix}help [command]` - show info about __command__",
-            "rights" : False
+            "usage" : "`{prefix}help` - command list\n`{prefix}help <command>` - show info about __command__",
+            "rights" : ""
         },
         "set" : {
             "description" : "Change server settings",
-            "usage" : "`{prefix}set [category]]`\n" + \
-                "Also you can write `{prefix}set list` for a list of settings" + \
+            "usage" : "`{prefix}set [category]`\n" + \
+                "Also you can write `{prefix}set list` for a list of settings\n" + \
                     "All possible settings you can see on the [website](https://discord.band/commands#/ADMIN)",
             "list_desctiption" : "List of settings",
-            "rights" : True
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "timely" : {
-            "description" : "Cобрать печенюхи",
-            "usage" : "`{prefix}timely` - получить ежедневную выплату",
-            "rights" : False
+            "description" : "Get __money__ [500 every 12 hours]",
+            "usage" : "`{prefix}timely`",
+            "rights" : ""
         },
         "work" : {
-            "description" : "Выйти на работу",
+            "description" : "Go to a work [50 every 30 minutes]",
             "usage" : "`{prefix}work`",
-            "rights" : False
+            "rights" : ""
         },
         "server" : {
-            "description" : "Показать информацию о сервере",
+            "description" : "Show information about this server",
             "usage" : "`{prefix}server`",
-            "rights" : False
+            "rights" : ""
         },
         "ping" : {
-            "description" : "Проверить задержку соединения",
+            "description" : "Check ping to Tomori",
             "usage" : "`{prefix}ping`",
-            "rights" : False
-        },
-        "createvoice" : {
-            "description" : "Создать приватный голосовой канал",
-            "usage" : "`{prefix}createvoice`",
-            "rights" : False
-        },
-        "setvoice" : {
-            "description" : "Установить голосовой канал",
-            "usage" : "`{prefix}setvoice`",
-            "rights" : False
-        },
-        "setlobby" : {
-            "description" : "Установить голосовой для ожидания",
-            "usage" : "`{prefix}setlobby`",
-            "rights" : False
+            "rights" : ""
         },
         "buy" : {
-            "description" : "Купить роль",
-            "usage" : "`{prefix}buy [название роли]`",
-            "rights" : False
+            "description" : "Buy a role from shop",
+            "usage" : "`{prefix}buy [name|mention|id|number in a list]`",
+            "rights" : ""
         },
         "shop" : {
-            "description" : "Показать магазин ролей",
-            "usage" : "`{prefix}shop`\n`{prefix}shop [страница]`",
-            "rights" : False
+            "description" : "Show list of roles in the shop",
+            "usage" : "`{prefix}shop`\n`{prefix}shop [page]`",
+            "rights" : ""
         },
         "pay" : {
-            "description" : "Получить __печенюхи__ из банка сервера",
-            "usage" : "`{prefix}pay [кол-во]`",
-            "rights" : True
+            "description" : "Take __money__ from server bank",
+            "usage" : "`{prefix}pay <count>`",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Owner**__"
         },
         "send" : {
-            "description" : "Переслать __файл__ от имени бота",
-            "usage" : "Отправить `{prefix}send` вместе с файлом",
-            "rights" : True
+            "description" : "Send file from this __url__ by Tomori",
+            "usage" : "`{prefix}send` <url>",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "say" : {
-            "description" : "Напишет __текст__ от имени бота",
-            "usage" : "`{prefix}say [текст]`",
-            "rights" : True
-        },
-        "песель" : {
-            "description" : "песель песель песель песель песель",
-            "usage" : "`{prefix}песель [песель]`",
-            "rights" : False
+            "description" : "Send __text__ by Tomori",
+            "usage" : "`{prefix}say <text>`\n`{prefix}say [channel] <text>`",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "report" : {
-            "description" : "Отправить репорт",
-            "usage" : "`{prefix}report [текст]`",
-            "rights" : False
+            "description" : "Send a report to Tomori developers",
+            "usage" : "`{prefix}report [text]`",
+            "rights" : ""
         },
         "give" : {
-            "description" : "Передать свои печенюхи",
-            "usage" : "`{prefix}give [кому] [кол-во]`",
-            "rights" : False
+            "description" : "Give your money to somebody",
+            "usage" : "`{prefix}give <@who> <count>`",
+            "rights" : ""
         },
         "top" : {
-            "description" : "Показать топ юзеров",
-            "usage" : "`{prefix}report`\n`{prefix}report [страница]`",
-            "rights" : False
+            "description" : "Show top users by XP",
+            "usage" : "`{prefix}top [page]`",
+            "rights" : ""
         },
         "remove" : {
-            "description" : "Сбросить настройку",
-            "usage" : "`{prefix}remove [параметр]`\n`{prefix}rm [параметр]`\n`{prefix}remove [параметр]`\n`{prefix}remove [параметр] [параметр]`\n`{prefix}remove [параметр] [параметр] [параметр]`",
-            "rights" : True
+            "description" : "Reset some settings",
+            "usage" : "`{prefix}remove <category> [name]`",
+            "aliases": "rm",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
+        },
+        "rm" : {
+            "description" : "Reset some settings",
+            "usage" : "`{prefix}remove <category> [name]`",
+            "aliases": "rm",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "backgrounds" : {
             "description" : "Показать список фонов",
-            "usage" : "`{prefix}backgrounds`\n`{prefix}backs`\n`{prefix}backgrounds [страница]`",
-            "rights" : False
+            "usage" : "`{prefix}backgrounds [page]`",
+            "aliases": "backs",
+            "rights" : ""
+        },
+        "backs" : {
+            "description" : "Показать список фонов",
+            "usage" : "`{prefix}backgrounds [page]`",
+            "aliases": "backs",
+            "rights" : ""
         },
         "$" : {
-            "description" : "Посмотреть свой баланс",
+            "description" : "Show your balance",
             "usage" : "`{prefix}$`",
-            "rights" : False
-        },
-        "sex" : {
-            "description" : "Трахнуть",
-            "usage" : "`{prefix}sex [кто]`",
-            "rights" : False
+            "rights" : ""
         },
         "hug" : {
-            "description" : "Обнять",
-            "usage" : "`{prefix}hug [кто]`",
-            "rights" : False
+            "description" : "Hug somebody [30 cookie]",
+            "usage" : "`{prefix}hug <@who>`",
+            "rights" : ""
         },
         "wink" : {
-            "description" : "Подмигнуть",
-            "usage" : "`{prefix}wink [кто]`",
-            "rights" : False
+            "description" : "Wink to somebody [20 cookie]",
+            "usage" : "`{prefix}wink <@who>`",
+            "rights" : ""
         },
         "five" : {
-            "description" : "Дать пять",
-            "usage" : "`{prefix}five [кто]`",
-            "rights" : False
+            "description" : "High-five somebody [5 cookie]",
+            "usage" : "`{prefix}five <@who>`",
+            "rights" : ""
         },
         "fuck" : {
-            "description" : "Показать фак",
-            "usage" : "`{prefix}fuck [кто]`",
-            "rights" : False
+            "description" : "Fuck somebody [15 cookie]",
+            "usage" : "`{prefix}fuck <@who>`",
+            "rights" : ""
         },
         "punch" : {
-            "description" : "Дать леща",
-            "usage" : "`{prefix}punch [кто]`",
-            "rights" : False
+            "description" : "Punch somebody [20 cookie]",
+            "usage" : "`{prefix}punch <@who>`",
+            "rights" : ""
         },
         "kiss" : {
-            "description" : "Поцеловать",
-            "usage" : "`{prefix}kiss [кто]`",
-            "rights" : False
+            "description" : "Kiss somebody [30 cookie]",
+            "usage" : "`{prefix}kiss <@who>`",
+            "rights" : ""
         },
         "drink" : {
-            "description" : "Уйти в запой",
-            "usage" : "`{prefix}drink [кто]`",
-            "rights" : False
+            "description" : "Drink some alchogol [45 cookie]",
+            "usage" : "`{prefix}drink <@who>`",
+            "rights" : ""
         },
         "shiki" : {
-            "description" : "Найти аниме на Shikimori",
-            "usage" : "`{prefix}shiki [название]`",
-            "rights" : False
-        },
-        "google" : {
-            "description" : "Найти что-то в гугле",
-            "usage" : "`{prefix}google [запрос]`",
-            "rights" : False
+            "description" : "Find anime at Shikimori",
+            "usage" : "`{prefix}shiki <name>`",
+            "rights" : ""
         },
         "br" : {
-            "description" : "Поставить деньги на рулетке",
-            "usage" : "`{prefix}br [кол-во]`\n`{prefix}roll [кол-во]`",
-            "rights" : False
+            "description" : "Play a bet-roll",
+            "usage" : "`{prefix}br <bet>`",
+            "aliases": "roll",
+            "rights" : ""
+        },
+        "roll" : {
+            "description" : "Play a bet-roll",
+            "usage" : "`{prefix}br <bet>`",
+            "aliases": "roll",
+            "rights" : ""
         },
         "slots" : {
-            "description" : "Поставить деньги на рулетке",
-            "usage" : "`{prefix}slots [кол-во]`\n`{prefix}slot [кол-во]`",
-            "rights" : False
+            "description" : "Play a slot-machine",
+            "usage" : "`{prefix}slots <bet>`",
+            "aliases": "slot",
+            "rights" : ""
+        },
+        "slot" : {
+            "description" : "Play a slot-machine",
+            "usage" : "`{prefix}slots <bet>`",
+            "aliases": "slot",
+            "rights" : ""
         },
         "rep" : {
-            "description" : "Выразить свое почтение",
-            "usage" : "`{prefix}rep [кто]`",
-            "rights" : False
+            "description" : "Give reputation to somebody",
+            "usage" : "`{prefix}rep <@who>`",
+            "rights" : ""
         },
         "avatar" : {
-            "description" : "Показать аватар пользователя",
-            "usage" : "`{prefix}avatar [кто]`",
-            "rights" : False
+            "description" : "Show users avatar",
+            "usage" : "`{prefix}avatar <@who>`",
+            "rights" : ""
         },
         "me" : {
-            "description" : "Вывести статистику пользователя картинкой",
-            "usage" : "`{prefix}me [кто]`",
-            "rights" : False
+            "description" : "Show users profile",
+            "usage" : "`{prefix}me [@who]`",
+            "aliases": "profile",
+            "rights" : ""
+        },
+        "profile" : {
+            "description" : "Show users profile",
+            "usage" : "`{prefix}me [@who]`",
+            "aliases": "profile",
+            "rights" : ""
         },
         "about" : {
-            "description" : "Показать информацию о боте",
+            "description" : "Show information about Tomori",
             "usage" : "`{prefix}about`",
-            "rights" : False
+            "rights" : ""
         },
         "invite" : {
-            "description" : "Получить ссылку на добавление бота себе на сервер",
+            "description" : "Get Tomori invite link",
             "usage" : "`{prefix}invite`",
-            "rights" : False
+            "rights" : ""
         },
     },
     "russian" : {
         "command" : "Команда `{command}`",
-        "usage" : "**Пример:**\n",
-        "rights" : "**Права:**\nНеобходимы права __**Администратора**__",
+        "usage" : "**Использование:**\n",
         "command_not_found" : "Команда не найдена!",
         "help" : {
             "description" : "Показать список команд",
-            "usage" : "`{prefix}help` - список команд\n`{prefix}help [команда]` - выводит информацию о __команде__",
-            "rights" : False
+            "usage" : "`{prefix}help` - список команд\n`{prefix}help <команда>` - выводит информацию о __команде__",
+            "rights" : ""
         },
         "set" : {
-            "description" : "Изменить параметры сервера",
-            "usage" : "`{prefix}set [category]]`\n" + \
+            "description" : "Изменить настройки сервера",
+            "usage" : "`{prefix}set <category>`\n" + \
                 "Также вы можете получить весь список настроек с помощью команды `{prefix}help set list`",
-            "list_desctiption" : "Список всех настроек",
-            "rights" : True
+            "list_desctiption" : "Список настроек",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "timely" : {
-            "description" : "Cобрать печенюхи",
+            "description" : "Cобрать валюту [500 каждые 12 часов]",
             "usage" : "`{prefix}timely` - получить ежедневную выплату",
-            "rights" : False
+            "rights" : ""
         },
         "work" : {
-            "description" : "Выйти на работу",
+            "description" : "Выйти на работу [50 каждые 30 минут]",
             "usage" : "`{prefix}work`",
-            "rights" : False
+            "rights" : ""
         },
         "server" : {
             "description" : "Показать информацию о сервере",
             "usage" : "`{prefix}server`",
-            "rights" : False
+            "rights" : ""
         },
         "ping" : {
             "description" : "Проверить задержку соединения",
             "usage" : "`{prefix}ping`",
-            "rights" : False
-        },
-        "createvoice" : {
-            "description" : "Создать приватный голосовой канал",
-            "usage" : "`{prefix}createvoice`",
-            "rights" : False
-        },
-        "setvoice" : {
-            "description" : "Установить голосовой канал",
-            "usage" : "`{prefix}setvoice`",
-            "rights" : False
-        },
-        "setlobby" : {
-            "description" : "Установить голосовой для ожидания",
-            "usage" : "`{prefix}setlobby`",
-            "rights" : False
+            "rights" : ""
         },
         "buy" : {
             "description" : "Купить роль",
-            "usage" : "`{prefix}buy [название роли]`",
-            "rights" : False
+            "usage" : "`{prefix}buy <имя|id|линк|номер в магазине>`",
+            "rights" : ""
         },
         "shop" : {
             "description" : "Показать магазин ролей",
             "usage" : "`{prefix}shop`\n`{prefix}shop [страница]`",
-            "rights" : False
+            "rights" : ""
         },
         "pay" : {
             "description" : "Получить __печенюхи__ из банка сервера",
-            "usage" : "`{prefix}pay [кол-во]`",
-            "rights" : True
+            "usage" : "`{prefix}pay <кол-во>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "send" : {
-            "description" : "Переслать __файл__ от имени бота",
-            "usage" : "Отправить `{prefix}send` вместе с файлом",
-            "rights" : True
+            "description" : "Скачать __файл__ по __ссылке__ и отправить от имени бота",
+            "usage" : "Отправить `{prefix}send` <ссылка>",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "say" : {
             "description" : "Напишет __текст__ от имени бота",
-            "usage" : "`{prefix}say [текст]`",
-            "rights" : True
-        },
-        "песель" : {
-            "description" : "песель песель песель песель песель",
-            "usage" : "`{prefix}песель [песель]`",
-            "rights" : False
+            "usage" : "`{prefix}say <текст>`\n`{prefix}say [чат] <текст>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "report" : {
             "description" : "Отправить репорт",
-            "usage" : "`{prefix}report [текст]`",
-            "rights" : False
+            "usage" : "`{prefix}report <текст>`",
+            "rights" : ""
         },
         "give" : {
             "description" : "Передать свои печенюхи",
-            "usage" : "`{prefix}give [кому] [кол-во]`",
-            "rights" : False
+            "usage" : "`{prefix}give <@кто> <кол-во>`",
+            "rights" : ""
         },
         "top" : {
-            "description" : "Показать топ юзеров",
-            "usage" : "`{prefix}report`\n`{prefix}report [страница]`",
-            "rights" : False
+            "description" : "Показать топ пользователей по опыту",
+            "usage" : "`{prefix}top`\n`{prefix}top [страница]`",
+            "rights" : ""
         },
         "remove" : {
-            "description" : "Сбросить настройку",
-            "usage" : "`{prefix}remove [параметр]`\n`{prefix}rm [параметр]`\n`{prefix}remove [параметр]`\n`{prefix}remove [параметр] [параметр]`\n`{prefix}remove [параметр] [параметр] [параметр]`",
-            "rights" : True
+            "description" : "Сбросить настройкe",
+            "usage" : "`{prefix}remove <категория> [название]`",
+            "aliases": "rm",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
+        },
+        "rm" : {
+            "description" : "Сбросить настройкe",
+            "usage" : "`{prefix}remove <категория> [название]`",
+            "aliases": "rm",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "backgrounds" : {
             "description" : "Показать список фонов",
             "usage" : "`{prefix}backgrounds`\n`{prefix}backs`\n`{prefix}backgrounds [страница]`",
-            "rights" : False
+            "aliases": "backs",
+            "rights" : ""
+        },
+        "backs" : {
+            "description" : "Показать список фонов",
+            "usage" : "`{prefix}backgrounds`\n`{prefix}backs`\n`{prefix}backgrounds [страница]`",
+            "aliases": "backs",
+            "rights" : ""
         },
         "$" : {
             "description" : "Посмотреть свой баланс",
             "usage" : "`{prefix}$`",
-            "rights" : False
-        },
-        "sex" : {
-            "description" : "Трахнуть",
-            "usage" : "`{prefix}sex [кто]`",
-            "rights" : False
+            "rights" : ""
         },
         "hug" : {
-            "description" : "Обнять",
-            "usage" : "`{prefix}hug [кто]`",
-            "rights" : False
+            "description" : "Обнять [30 печенюх]",
+            "usage" : "`{prefix}hug <@кто>`",
+            "rights" : ""
         },
         "wink" : {
-            "description" : "Подмигнуть",
-            "usage" : "`{prefix}wink [кто]`",
-            "rights" : False
+            "description" : "Подмигнуть [20 печенюх]",
+            "usage" : "`{prefix}wink <@кто>`",
+            "rights" : ""
         },
         "five" : {
-            "description" : "Дать пять",
-            "usage" : "`{prefix}five [кто]`",
-            "rights" : False
+            "description" : "Дать пять [5 печенюх]",
+            "usage" : "`{prefix}five <@кто>`",
+            "rights" : ""
         },
         "fuck" : {
-            "description" : "Показать фак",
-            "usage" : "`{prefix}fuck [кто]`",
-            "rights" : False
+            "description" : "Показать фак [15 печенюх]",
+            "usage" : "`{prefix}fuck <@кто>`",
+            "rights" : ""
         },
         "punch" : {
-            "description" : "Дать леща",
-            "usage" : "`{prefix}punch [кто]`",
-            "rights" : False
+            "description" : "Дать леща [20 печенюх]",
+            "usage" : "`{prefix}punch <@кто>`",
+            "rights" : ""
         },
         "kiss" : {
-            "description" : "Поцеловать",
-            "usage" : "`{prefix}kiss [кто]`",
-            "rights" : False
+            "description" : "Поцеловать [30 печенюх]",
+            "usage" : "`{prefix}kiss <@кто>`",
+            "rights" : ""
         },
         "drink" : {
-            "description" : "Уйти в запой",
-            "usage" : "`{prefix}drink [кто]`",
-            "rights" : False
+            "description" : "Уйти в запой [45 печенюх]",
+            "usage" : "`{prefix}drink <@кто>`",
+            "rights" : ""
         },
         "shiki" : {
             "description" : "Найти аниме на Shikimori",
-            "usage" : "`{prefix}shiki [название]`",
-            "rights" : False
-        },
-        "google" : {
-            "description" : "Найти что-то в гугле",
-            "usage" : "`{prefix}google [запрос]`",
-            "rights" : False
+            "usage" : "`{prefix}shiki <название>`",
+            "rights" : ""
         },
         "br" : {
             "description" : "Поставить деньги на рулетке",
-            "usage" : "`{prefix}br [кол-во]`\n`{prefix}roll [кол-во]`",
-            "rights" : False
+            "usage" : "`{prefix}br <ставка>`",
+            "aliases": "roll",
+            "rights" : ""
+        },
+        "roll" : {
+            "description" : "Поставить деньги на рулетке",
+            "usage" : "`{prefix}br <ставка>`",
+            "aliases": "roll",
+            "rights" : ""
         },
         "slots" : {
             "description" : "Поставить деньги на рулетке",
-            "usage" : "`{prefix}slots [кол-во]`\n`{prefix}slot [кол-во]`",
-            "rights" : False
+            "usage" : "`{prefix}slots <ставка>`",
+            "aliases": "slot",
+            "rights" : ""
+        },
+        "slot" : {
+            "description" : "Поставить деньги на рулетке",
+            "usage" : "`{prefix}slots <ставка>`",
+            "aliases": "slot",
+            "rights" : ""
         },
         "rep" : {
             "description" : "Выразить свое почтение",
-            "usage" : "`{prefix}rep [кто]`",
-            "rights" : False
+            "usage" : "`{prefix}rep <@кто>`",
+            "rights" : ""
         },
         "avatar" : {
             "description" : "Показать аватар пользователя",
-            "usage" : "`{prefix}avatar [кто]`",
-            "rights" : False
+            "usage" : "`{prefix}avatar <@кто>`",
+            "rights" : ""
         },
         "me" : {
-            "description" : "Вывести статистику пользователя картинкой",
-            "usage" : "`{prefix}me [кто]`",
-            "rights" : False
+            "description" : "Показать профиль пользователя",
+            "usage" : "`{prefix}me <@кто>`",
+            "rights" : ""
         },
         "about" : {
-            "description" : "Показать информацию о боте",
+            "description" : "Показать информацию о Tomori",
             "usage" : "`{prefix}about`",
-            "rights" : False
+            "rights" : ""
         },
         "invite" : {
-            "description" : "Получить ссылку на добавление бота себе на сервер",
+            "description" : "Получить ссылку на добавление Tomori себе на сервер",
             "usage" : "`{prefix}invite`",
-            "rights" : False
+            "rights" : ""
         }
     }
 }
@@ -417,31 +418,33 @@ prep = sup_comma.join(supported_prefixes)
 
 help_set_list = {
     "english" : {
-        "Background" : "Change background\n\n**Usage:**\n`{prefix}set background [number/name]`",
-        "Autorole" : "Set autorole when logging in to the server\n\n**Usage:**\n`{prefix}set autorole [id]`",
-        "Launguage" : "Set language\nSupported Languages: `russian`, `english`, `ukrainian`\n\n**Usage:**\n `{prefix}set language [lang]`",
-        "Prefix" : "Set Prefix\nSupported Prefixes: "+prep+"\n\n**Usage:**\n`{prefix}set prefix [prefix]`"
+        "__Background__" : "Change background\n**Usage:**\n`{prefix}set background <name|number>`\n**Aliaces:**\n `back`",
+        "__Autorole__" : "Set an autorole to user when he logging at the server\n**Usage:**\n`{prefix}set autorole <name|id|link>`\n**Rights:**\nNeed permissions __**Administrator**__",
+        "__Shop__" : "Add a role to the shop\n**Usage:**\n`{prefix}set shop <name|id|link> <cost>`\n**Rights:**\nNeed permissions __**Administrator**__",
+        "__Launguage__" : "Change Tomori's language\nSupported Languages: `russian`, `english`, `ukrainian`\n**Usage:**\n `{prefix}set language <lang>`\n**Aliaces:**\n `lang`\n**Rights:**\nNeed permissions __**Administrator**__",
+        "__Prefix__" : "Set Prefix\nSupported Prefixes: "+prep+"\n**Usage:**\n`{prefix}set prefix [prefix]`\n**Rights:**\nNeed permissions __**Administrator**__"
     },
     "russian" : {
-        "Background" : "Change background\n\n**Usage:**\n`{prefix}set background [number/name]`",
-        "Autorole" : "Set autorole when logging in to the server\n\n**Usage:**\n`{prefix}set autorole [id]`\n",
-        "Launguage" : "Set language\nSupported Languages: `russian, english, ukrainian`\n\n**Usage:**\n `{prefix}set language [lang]`",
-        "Prefix" : "Set Prefix\nSupported Prefixes:  "+prep+"\n\n**Usage:**\n`{prefix}set prefix [prefix]`"
+        "__Background__" : "Сменить фон профиля\n**Использование:**\n`{prefix}set background <имя|номер>`\n**Aliaces:**\n `back`",
+        "__Autorole__" : "Установить автороль участникам при входе на сервер\n**Использование:**\n`{prefix}set autorole <имя|id|ссылка>`\n**Rights:**\nНужны права __**Администратор**__",
+        "__Shop__" : "Добавить роль в магазин\n**Usage:**\n`{prefix}set shop <имя|id|ссылка> <цена>`\n**Rights:**\nНужны права __**Администратор**__",
+        "__Launguage__" : "Сменить язык\nДоступные языки: `russian, english, ukrainian`\n**Использование:**\n `{prefix}set language <язык>`\n**Aliaces:**\n `lang`\n**Rights:**\nНужны права __**Администратор**__",
+        "__Prefix__" : "Сменить префикс\nДоступные префиксы:  "+prep+"\n**Использование:**\n`{prefix}set prefix <префикс>`\n**Rights:**\nНужны права __**Администратор**__"
     }
 }
 
 
 
 async def h_check_help(client, conn, message):
-    
+
     server_id = message.server.id
 
-    formatted_message = message.content.split(" ")
+    formatted_message = message.content.split(" ", maxsplit=1)
     command = formatted_message[1]
 
-    const = await conn.fetchrow("SELECT locale, prefix FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[0] if const[0] in help_responses.keys() else "english" #Проверка на наличие языка в словаре, иначе Английский
-    prefix = const[1]
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"] if const["locale"] in help_responses.keys() else "english" #Проверка на наличие языка в словаре, иначе Английский
+    prefix = const["prefix"]
 
     em = discord.Embed(color = 0xC5934B)
     em.title = help_responses[lang]["command"].format(command=command)
@@ -450,23 +453,30 @@ async def h_check_help(client, conn, message):
         discriminator=message.author.discriminator
     ))
 
-    if command == "set_list":
+    if command == "set list":
         em.description = help_responses[lang]["set"]["list_desctiption"]
         if lang in help_set_list.keys():
-            for c, d in help_set_list[lang].items():       
+            for c, d in help_set_list[lang].items():
                 em.add_field(name=c, value=d.format(prefix = prefix), inline=False)
         else:
             em.description = help_responses["english"]["command_not_found"]
         await client.send_message(message.channel, embed=em)
         return
-       
+
+    aliases = help_responses[lang][command].get("aliases")
+    if not aliases:
+        aliases = ""
+    else:
+        aliases = "\n**Aliaces:**\n`" + aliases + "`"
+
     if command in help_responses[lang].keys():
-        em.description = "{desc}\n\n{usage}{rights}".format(
+        em.description = "{desc}\n\n{usage}{aliases}{rights}".format(
             desc=help_responses[lang][command]["description"],
             usage=help_responses[lang]["usage"] + \
                 help_responses[lang][command]["usage"].format(prefix=prefix),
             #Складываем "Usage:" и примеры использования
-            rights="" if not help_responses[lang][command]["rights"] else "\n\n" + help_responses[lang]["rights"]
+            aliases=aliases,
+            rights=help_responses[lang][command]["rights"]
             #Если "rights" = True, то мы сообщаем что только администраторы могут использовать эту команду
             )
     else:
