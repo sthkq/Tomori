@@ -402,7 +402,7 @@ async def f_punch(client, conn, context, who):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not const[3]:
+    if not const or not const["is_punch"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return

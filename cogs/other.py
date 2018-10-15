@@ -14,6 +14,7 @@ from cogs.locale import *
 from cogs.const import *
 from cogs.help import *
 from cogs.ids import *
+from cogs.util import *
 from cogs.discord_hooks import Webhook
 
 support_url = "https://discord.gg/tomori"
@@ -349,10 +350,10 @@ async def o_list(client, conn, context, page):
                 index=(page-1)*10+index+1,
                 name=server["name"]
             ),
-            value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162>](https://discord-server.com/{id} \"{link_message}\")".format(
+            value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162> **__join__**]({link} \"{link_message}\")".format(
                 likes=server["likes"],
                 member_count=member_count,
-                id=server["discord_id"],
+                link=link,
                 link_message=_locale["other_list_link_message"]
             ),
             inline=True

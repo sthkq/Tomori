@@ -26,11 +26,11 @@ from cogs.const import *
 
 mask = Image.new('L', (1002, 1002), 0)
 draws = ImageDraw.Draw(mask)
-draws.ellipse((486, 5) + (516, 35), fill=255)
-draws.ellipse((486, 967) + (516, 997), fill=255)
-draws.ellipse((5, 486) + (35, 516), fill=255)
-draws.ellipse((967, 486) + (997, 516), fill=255)
-draws.polygon([(516, 15), (486, 15), (15, 486), (15, 516), (486, 987), (516, 987), (987, 516), (987, 486)], fill=255)
+draws.ellipse((471, 5) + (531, 35), fill=255)
+draws.ellipse((471, 967) + (531, 997), fill=255)
+draws.ellipse((5, 471) + (35, 531), fill=255)
+draws.ellipse((967, 471) + (997, 531), fill=255)
+draws.polygon([(531, 15), (471, 15), (15, 471), (15, 531), (471, 987), (531, 987), (987, 531), (987, 471)], fill=255)
 mask = mask.resize((343, 343), Image.ANTIALIAS)
 
 
@@ -652,8 +652,33 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
 async def send_welcome_pic(client, channel, user, const):
     await client.send_typing(channel)
     back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(const["welcome_back"]))
-    draw_b = ImageDraw.Draw(back)
+    draw = ImageDraw.Draw(back)
     under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(const["welcome_under"]))
+
+    text_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+    text_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+
+    text_welcome = u"{}".format("WELCOME")
+    welcome_size = 1
+    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+    while font_name.getsize(text_welcome)[0] < 500:
+        welcome_size += 1
+        font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+        if welcome_size == 71:
+            break
+    welcome_size -= 1
+    font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+
+    text_name = u"{}".format(user.display_name+"#"+user.discriminator)
+    name_size = 1
+    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
+    while font_name.getsize(text_name)[0] < 500:
+        name_size += 1
+        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
+        if name_size == 36:
+            break
+    name_size -= 1
+    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
 
     ava_url = user.avatar_url
     if not ava_url:
@@ -665,9 +690,25 @@ async def send_welcome_pic(client, channel, user, const):
     back.paste(under, (0, 0), under)
     back.paste(avatar, (29, 29), avatar)
 
+    draw.text(
+        (435, 120),
+        text_welcome,
+        (53, 56, 61),
+        font=font_welcome
+    )
+    draw.text(
+        (435, 230),
+        text_name,
+        (53, 56, 61),
+        font=font_name
+    )
+
     filename = 'cogs/stat/return/welcome/{}.png'.format(user.server.id+'_'+user.id)
     back.save(filename)
-    await client.send_file(channel, filename)
+    content=None
+    if const["welcome_text"]:
+        content = const["welcome_text"].format(name=user.display_name, mention=user.mention, server=user.server.name, count=user.server.member_count)[:2000]
+    await client.send_file(channel, filename, content=content)
     os.remove(filename)
     return
 
