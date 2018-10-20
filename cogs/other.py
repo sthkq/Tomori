@@ -40,10 +40,6 @@ async def o_webhook(client, conn, context, name, value):
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
-    try:
-        await client.delete_message(message)
-    except:
-        pass
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'webhook' AND name = '{name}' AND server_id = '{server_id}'".format(server_id=server_id, name=clear_name(name).lower()))
     if not dat:
@@ -53,6 +49,18 @@ async def o_webhook(client, conn, context, name, value):
         )
         await client.send_message(message.channel, embed=em)
         return
+    if dat["condition"]:
+        cond = dat["condition"]
+    else:
+        cond = ""
+    if not any(cond==role.id or role.permissions.administrator for role in message.author.roles) \
+    and not cond==message.author.id \
+    and not message.author.id == message.server.owner.id:
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
     try:
         ret = json.loads(value)
         if ret and isinstance(ret, dict):
@@ -104,11 +112,12 @@ For any questions talk to <@316287332779163648>.".format(support_url=support_url
 **[Ссылка на сервер поддержки]({support_url})**\n\
 **[Ссылка на сайт]({site_url})**\n\n\
 По всем вопросам обращайтесь к <@316287332779163648>.".format(support_url=support_url, site_url=site_url)
-    em.add_field(
-        name=locale[lang]["global_follow_us"],
-        value=tomori_links,
-        inline=False
-    )
+    if not message.server.id in servers_without_follow_us:
+        em.add_field(
+            name=locale[lang]["global_follow_us"],
+            value=tomori_links,
+            inline=False
+        )
     await client.send_message(message.channel, embed=em)
     return
 
@@ -135,11 +144,12 @@ async def o_invite(client, conn, context):
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     em.title = locale[lang]["other_invite_title"]
     em.description = invite_url
-    em.add_field(
-        name=locale[lang]["global_follow_us"],
-        value=tomori_links,
-        inline=False
-    )
+    if not message.server.id in servers_without_follow_us:
+        em.add_field(
+            name=locale[lang]["global_follow_us"],
+            value=tomori_links,
+            inline=False
+        )
     await client.send_message(message.author, embed=em)
     return
 
@@ -282,11 +292,12 @@ async def o_like(client, conn, context):
             minutes=m,
             seconds=s
             )
-        em.add_field(
-            name=locale[lang]["global_follow_us"],
-            value=tomori_links,
-            inline=False
-        )
+        if not message.server.id in servers_without_follow_us:
+            em.add_field(
+                name=locale[lang]["global_follow_us"],
+                value=tomori_links,
+                inline=False
+            )
     await client.send_message(message.channel, embed=em)
     return
 
@@ -451,7 +462,7 @@ async def o_help(client, conn, context):
     if message.content.startswith(const["prefix"]+"help ") or message.content.startswith(const["prefix"]+"h "):
         await h_check_help(client, conn, message)
         return
-    if not message.content == const["prefix"]+"help":
+    if not message.content == const["prefix"]+"help" and not message.content == "!help":
         return
     em.title = locale[lang]["other_help_title"]
     em.description = locale[lang]["other_help_desc"].format(const["name"], const["prefix"])
@@ -503,12 +514,24 @@ async def o_help(client, conn, context):
         com_stat += "``top``, "
     if const["is_me"]:
         com_stat += "``me``, "
-    com_other = "``help``, ``ping``, "
+    com_other = "``help``, "
+    if const["is_ping"]:
+        com_other += "``ping``, "
     if const["is_avatar"]:
         com_other += "``avatar``, "
-    com_other += "``report``, ``server``, ``invite``, ``about``, "
+    if const["is_report"]:
+        com_other += "``report``, "
+    if const["is_server"]:
+        com_other += "``server``, "
+    if const["is_invite"]:
+        com_other += "``invite``, "
+    if const["is_about"]:
+        com_other += "``about``, "
     com_adm += "``send``, ``start``, ``stop``, ``pay``, "
-    com_mon += "``like``, ``list``, "
+    if const["is_like"]:
+        com_mon += "``like``, "
+    if const["is_list"]:
+        com_mon += "``list``, "
     if com_adm != "":
         em.add_field(name="Admin", value=com_adm[:-2], inline=False)
     if com_econ != "":
@@ -521,7 +544,8 @@ async def o_help(client, conn, context):
         em.add_field(name="Monitoring", value=com_mon[:-2], inline=False)
     if com_other != "":
         em.add_field(name="Other", value=com_other[:-2], inline=False)
-    em.add_field(name=locale[lang]["help_more_info"], value=site_commands_url, inline=False)
+    if not server_id in servers_without_more_info_in_help:
+        em.add_field(name=locale[lang]["help_more_info"], value=site_commands_url, inline=False)
     em.set_footer(text=locale[lang]["help_help_by_command"].format(prefix=const["prefix"]))
     await client.send_message(message.channel, embed=em)
     return
@@ -715,6 +739,69 @@ async def o_set(client, conn, context, arg1, arg2, args):
             ))
         em.description = locale[lang]["other_autorole_success_response"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
+            role_id=role.id
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
+    if arg1 == "lvlup":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="lvl"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="role"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2.isdigit():
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="lvl"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        role = discord.utils.get(message.server.roles, name=args)
+        if not role:
+            args = re.sub(r'[<@#&!>]+', '', args.lower())
+            role = discord.utils.get(message.server.roles, id=args)
+        if not role:
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="role"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND type = 'lvlup' AND condition = '{cond}'".format(
+            server=message.server.id,
+            cond=arg2
+        ))
+        if dat:
+            await conn.execute("UPDATE mods SET value = '{role}' WHERE server_id = '{server}' AND type = 'lvlup' AND condition = '{cond}'".format(
+                role=role.id,
+                server=message.server.id,
+                cond=dat["condition"]
+            ))
+        else:
+            await conn.execute("INSERT INTO mods(server_id, condition, value, type) VALUES('{server}', '{cond}', '{role}', 'lvlup')".format(
+                role=role.id,
+                server=message.server.id,
+                cond=arg2
+            ))
+        em.description = locale[lang]["other_lvlup_success_response"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            lvl=arg2,
             role_id=role.id
         )
         await client.send_message(message.channel, embed=em)
@@ -963,6 +1050,43 @@ async def o_remove(client, conn, context, arg1, arg2, args):
         em.description = locale[lang]["other_autorole_success_delete"].format(
             who=message.author.display_name+"#"+message.author.discriminator
         )
+        await client.send_message(message.channel, embed=em)
+        return
+
+    if arg1 == "lvlup":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["other_missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="lvl"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2.isdigit():
+            em.description = locale[lang]["other_incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="lvl"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'lvlup' AND condition = '{lvl}' AND server_id = '{server_id}'".format(server_id=server_id, lvl=arg2))
+        if not dat:
+            em.description = locale[lang]["other_lvlup_not_exists"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                lvl=arg2
+            )
+        else:
+            await conn.execute("DELETE FROM mods WHERE type = 'lvlup' AND condition = '{lvl}' AND server_id = '{server_id}'".format(server_id=server_id, lvl=arg2))
+            em.description = locale[lang]["other_lvlup_success_delete"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                role_id=dat["value"],
+                lvl=arg2
+            )
         await client.send_message(message.channel, embed=em)
         return
 

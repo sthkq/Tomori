@@ -21,6 +21,7 @@ from discord.ext import commands
 from config.settings import settings
 from cogs.locale import *
 from cogs.const import *
+from cogs.ids import *
 
 
 
@@ -430,6 +431,59 @@ async def u_check_ddos(client, conn, logger, member):
     return False
 
 
+async def u_check_travelling(client, member):
+    server_id = travelling_servers.get(member.server.id)
+    if not server_id:
+        return
+    server = client.get_server(server_id)
+    if not server:
+        return
+    user = server.get_member(member.id)
+    if not user:
+        return
+    roles = user.roles
+    _roles = member.server.roles
+    added_roles = []
+    for role in roles:
+        _role = discord.utils.get(
+            _roles,
+            name=role.name,
+            permissions=role.permissions,
+            colour=role.colour,
+            hoist=role.hoist,
+            mentionable=role.mentionable
+        )
+        if _role:
+            added_roles.append(_role)
+    if added_roles:
+        await client.add_roles(member, *added_roles)
+    #await client.kick(user)
+
+async def u_clone_roles(client, conn, context, server_id):
+    message = context.message
+    server = client.get_server(server_id)
+    if not server:
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    roles = message.server.roles
+    roles = sorted(roles,key=lambda role: role.position, reverse=True)
+    for role in roles:
+        try:
+            await client.create_role(
+                server,
+                name=role.name,
+                permissions=role.permissions,
+                colour=role.colour,
+                hoist=role.hoist,
+                mentionable=role.mentionable
+            )
+        except:
+            pass
+
+
 
 async def u_invite_to_server(client, server_id):
     server = client.get_server(server_id)
@@ -634,10 +688,19 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
     lang = const["locale"]
     if not lang in locale.keys():
         return
+    lvl = xp_lvlup_list[xp]
+    dat = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND type = 'lvlup' AND condition = '{cond}'".format(
+        server=who.server.id,
+        cond=lvl
+    ))
+    if dat:
+        role = discord.utils.get(who.server.roles, id=dat["value"])
+        if role:
+            await client.add_roles(who, role)
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    em.description = locale[lang]["lvl_up"].format(
+    em.description = locale[lang]["lvlup"].format(
         who=who.mention,
-        lvl=xp_lvlup_list[xp]
+        lvl=lvl
     )
     em.set_image(url=lvlup_image_url)
     try:
@@ -648,6 +711,14 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
         pass
 
 
+def welcomer_format(text, member):
+    server = member.server
+    return text.format(
+        name=member.name,
+        mention=member.mention,
+        server=server.name,
+        count=server.member_count
+    )[:2000]
 
 async def send_welcome_pic(client, channel, user, const):
     await client.send_typing(channel)
@@ -707,18 +778,77 @@ async def send_welcome_pic(client, channel, user, const):
     back.save(filename)
     content=None
     if const["welcome_text"]:
-        content = const["welcome_text"].format(name=user.display_name, mention=user.mention, server=user.server.name, count=user.server.member_count)[:2000]
+        content = welcomer_format(const["welcome_text"], user)
     await client.send_file(channel, filename, content=content)
     os.remove(filename)
     return
 
+async def tomori_log_ban(client, member):
+    c_ban = discord.Embed(colour=0xF10118)
+    c_ban.set_author(name="Ban user", icon_url=member.server.icon_url)
+    c_ban.add_field(
+        name="User",
+        value=member.display_name+"#"+member.discriminator,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Mention",
+        value=member.mention,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Server",
+        value=member.server.name+"\n"+member.server.id,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Reason",
+        value="'Event references'",
+        inline=True
+    )
+    ava_url = member.avatar_url
+    if not ava_url:
+        ava_url = member.default_avatar_url
+    c_ban.set_thumbnail(url=ava_url)
+    c_ban.set_footer(text="ID: {0.id} • {1}".format(member, time.ctime(time.time())))
+    await client.send_message(client.get_channel(tomori_event_channel), embed=c_ban)
+
+async def tomori_log_unban(client, server, member):
+    c_ban = discord.Embed(colour=0xF10118)
+    c_ban.set_author(name="Unban user", icon_url=server.icon_url)
+    c_ban.add_field(
+        name="User",
+        value=member.name+"#"+member.discriminator,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Mention",
+        value=member.mention,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Server",
+        value=server.name+"\n"+server.id,
+        inline=True
+    )
+    c_ban.add_field(
+        name="Reason",
+        value="'Event references'",
+        inline=True
+    )
+    ava_url = member.avatar_url
+    if not ava_url:
+        ava_url = member.default_avatar_url
+    c_ban.set_thumbnail(url=ava_url)
+    c_ban.set_footer(text="ID: {0.id} • {1}".format(member, time.ctime(time.time())))
+    await client.send_message(client.get_channel(tomori_event_channel), embed=c_ban)
 
 # async def u_check_achievements(client, conn, const, message, key):
 #     lang = const["locale"]
 #     if not lang in locale.keys():
 #         return
 #     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-#     em.description = locale[lang]["lvl_up"].format(
+#     em.description = locale[lang]["lvlup"].format(
 #         who=who.mention,
 #         lvl=xp_lvlup_list[xp]
 #     )

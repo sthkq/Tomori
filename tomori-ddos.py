@@ -201,7 +201,7 @@ async def on_ready():
     #client.loop.create_task(ddosing())
     client.loop.create_task(kicking())
     await client.change_presence(game=discord.Game(type=3, name="DDOS-protection"))
-    await client.send_message(client.get_server(log_join_leave_server_id).get_member("430383342182203392"), "DDOS-protection acquired.")
+    await client.send_message(client.get_server(log_join_leave_server_id).get_member("432879426066317322"), "DDOS-protection acquired.")
 
 
 @client.command(pass_context=True, name="get_bans", hidden=True, help="Перенести забаненных юзеров в черный список.")
