@@ -258,45 +258,17 @@ async def u_reaction_add(client, conn, logger, data):
         server_id=server.id,
         name=message_id
     ))
+    roles = []
+    for role in user.roles:
+        if not any(role.id==dat["value"] for dat in data):
+            roles.append(role)
     for react in data:
         if not react["condition"] == emoji['name']:
             continue
-        roles = []
-        for dat in data:
-            role = discord.utils.get(server.roles, id=dat["value"])
-            if role:
-                roles.append(role)
-            await client.remove_roles(user, *roles)
         role = discord.utils.get(server.roles, id=react["value"])
-        if not role:
-            logger.error("doesn't exists role id - {id}".format(id=react["value"]))
-            return
-        await client.add_roles(user, role)
-    if message_id in reaction_mes_ids:
-        logger.info("add reaction | message_id - {0} | server_name - {1.name} | server_id - {1.id} | user_name - {2.name} | user_mention - {2.mention} | emoji - {3}\n".format(message_id, server, user, emoji['name']))
-        roles = []
-        if emoji["id"] == emoji_zverolud_id:
-            for s in reaction_zverolud_ids:
-                role = discord.utils.get(server.roles, id=s)
-                if not role:
-                    logger.info("doesn't exists role id - {id}".format(id=s))
-                    continue
-                roles.append(role)
-        if emoji["id"] == emoji_nolife_id:
-            for s in reaction_nolife_ids:
-                role = discord.utils.get(server.roles, id=s)
-                if not role:
-                    logger.info("doesn't exists role id - {id}".format(id=s))
-                    continue
-                roles.append(role)
-        if emoji["id"] == emoji_avanturist_id:
-            for s in reaction_avanturist_ids:
-                role = discord.utils.get(server.roles, id=s)
-                if not role:
-                    logger.info("doesn't exists role id - {id}".format(id=s))
-                    continue
-                roles.append(role)
-        await client.add_roles(user, *roles)
+        if role and not role in roles:
+            roles.append(role)
+    await client.replace_roles(user, *roles)
 
 async def u_reaction_remove(client, conn, logger, data):
     emoji = data.get("emoji")
@@ -305,42 +277,21 @@ async def u_reaction_remove(client, conn, logger, data):
     server_id = data.get("guild_id")
     server = client.get_server(server_id)
     user = server.get_member(user_id)
-    react = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'reaction' AND name = '{name}' AND condition = '{condition}'".format(
+    data = await conn.fetch("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'reaction' AND name = '{name}'".format(
         server_id=server.id,
         name=message_id,
         condition=emoji["name"]
     ))
-    if react:
+    roles = []
+    for react in data:
+        if not react["condition"] == emoji['name']:
+            continue
         role = discord.utils.get(server.roles, id=react["value"])
         if not role:
             logger.error("doesn't exists role id - {id}".format(id=react["value"]))
-            return
-        if role in user.roles:
-            await client.remove_roles(user, role)
-    if message_id in reaction_mes_ids:
-        server = client.get_server("377890113352630282")
-        user = server.get_member(user_id)
-        logger.info("remove reaction | message_id - {0} | server_name - {1.name} | server_id - {1.id} | user_name - {2.name} | user_mention - {2.mention} | emoji - {3}\n".format(message_id, server, user, emoji['name']))
-        roles = []
-        if emoji["id"] == emoji_zverolud_id or emoji["id"] == emoji_nolife_id or emoji["id"] == emoji_avanturist_id:
-            for s in reaction_zverolud_ids:
-                role = discord.utils.get(server.roles, id=s)
-                if not role:
-                    logger.info("doesn't exists role id - {id}".format(id=s))
-                    continue
-                roles.append(role)
-        for s in reaction_nolife_ids:
-            role = discord.utils.get(server.roles, id=s)
-            if not role:
-                logger.info("doesn't exists role id - {id}".format(id=s))
-                continue
+        else:
             roles.append(role)
-        for s in reaction_avanturist_ids:
-            role = discord.utils.get(server.roles, id=s)
-            if not role:
-                logger.info("doesn't exists role id - {id}".format(id=s))
-                continue
-            roles.append(role)
+    if roles:
         await client.remove_roles(user, *roles)
 
 async def u_check_message(client, conn, logger, message):
@@ -603,6 +554,27 @@ async def u_check_support(client, conn, logger, message):
         chan_id = channel.user.id
     else:
         chan_id = channel.id
+
+    travel_to = travelling_message_servers.get(message.server.id)
+    if travel_to and message.author.id != client.user.id and not message.author.bot:
+        travel_server_to = client.get_server(travel_to)
+        if travel_server_to:
+            travel_channel_to = discord.utils.get(
+                travel_server_to.channels,
+                name=channel.name,
+                type=channel.type
+                # topic=channel.topic
+            )
+            if travel_channel_to:
+                em = discord.Embed(colour=0xC5934B)
+                em.description = message.content
+                icon_url = message.author.avatar_url
+                if not icon_url:
+                    icon_url = message.author.default_avatar_url
+                em.set_author(name=message.author.name + "#" + message.author.discriminator, icon_url=icon_url)
+                em.set_footer(text="Отправлено с сервера "+message.server.name)
+                await client.send_message(travel_channel_to, embed=em)
+
     dat = await conn.fetchrow("SELECT * FROM tickets WHERE request_id = '{request_id}' OR response_id = '{response_id}'".format(request_id=chan_id, response_id=chan_id))
     if not dat:
         if channel.is_private and message.content:
@@ -643,9 +615,13 @@ async def u_check_support(client, conn, logger, message):
                 if dat["name"]:
                     name = "{name}#{tag}".format(name=dat["name"], tag=message.author.discriminator)
                     icon_url = message.server.icon_url
+                    if not icon_url:
+                        icon_url = message.author.default_avatar_url
                 if not name:
                     name = "{name}#{tag}".format(name=message.author.name, tag=message.author.discriminator)
                     icon_url = message.author.avatar_url
+                    if not icon_url:
+                        icon_url = message.author.default_avatar_url
                 em.set_author(name=name, icon_url=icon_url)
                 await client.send_message(request_channel, embed=em)
             elif channel.id == request_channel.id:
@@ -671,13 +647,19 @@ async def u_check_support(client, conn, logger, message):
                     if s == message.author.id:
                         name = "Tomori Support#000{tag} ✔".format(tag=index)
                         icon_url = client.user.avatar_url
+                        if not icon_url:
+                            icon_url = message.author.default_avatar_url
                         break
                 if dat["name"]:
                     name = "{name}#{tag}".format(name=dat["name"], tag=message.author.discriminator)
                     icon_url = message.author.avatar_url
+                    if not icon_url:
+                        icon_url = message.author.default_avatar_url
                 if not name:
                     name = "{name}#{tag}".format(name=message.author.name, tag=message.author.discriminator)
                     icon_url = message.author.avatar_url
+                    if not icon_url:
+                        icon_url = message.author.default_avatar_url
                 em.set_author(name=name, icon_url=icon_url)
                 await client.send_message(request_channel, embed=em)
 
@@ -689,20 +671,35 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
     if not lang in locale.keys():
         return
     lvl = xp_lvlup_list[xp]
-    dat = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND type = 'lvlup' AND condition = '{cond}'".format(
-        server=who.server.id,
-        cond=lvl
-    ))
-    if dat:
-        role = discord.utils.get(who.server.roles, id=dat["value"])
-        if role:
-            await client.add_roles(who, role)
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     em.description = locale[lang]["lvlup"].format(
         who=who.mention,
         lvl=lvl
     )
-    em.set_image(url=lvlup_image_url)
+    data = await conn.fetch("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'lvlup'".format(
+        server_id=who.server.id
+    ))
+    roles = []
+    is_new_role = False
+    roles_mention = ""
+    for role in who.roles:
+        if not any(role.id==dat["value"] for dat in data):
+            roles.append(role)
+    for dat in data:
+        if not dat["condition"] == str(lvl):
+            continue
+        role = discord.utils.get(who.server.roles, id=dat["value"])
+        if role and not role in roles:
+            is_new_role = True
+            roles_mention += role.mention+", "
+            roles.append(role)
+    if is_new_role:
+        em.description += locale[lang]["lvlup_continue"].format(role=roles_mention[:-2])
+        await client.replace_roles(who, *roles)
+    if not who.server.id in konoha_servers:
+        em.set_image(url=lvlup_image_url)
+    else:
+        em.set_image(url=lvlup_image_konoha_url)
     try:
         msg = await client.send_message(channel, embed=em)
         await asyncio.sleep(25)
@@ -722,6 +719,9 @@ def welcomer_format(text, member):
 
 async def send_welcome_pic(client, channel, user, const):
     await client.send_typing(channel)
+
+    color = json.loads(const["welcome_text_color"])
+
     back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(const["welcome_back"]))
     draw = ImageDraw.Draw(back)
     under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(const["welcome_under"]))
@@ -764,13 +764,13 @@ async def send_welcome_pic(client, channel, user, const):
     draw.text(
         (435, 120),
         text_welcome,
-        (53, 56, 61),
+        (color[0], color[1], color[2]),
         font=font_welcome
     )
     draw.text(
         (435, 230),
         text_name,
-        (53, 56, 61),
+        (color[0], color[1], color[2]),
         font=font_name
     )
 

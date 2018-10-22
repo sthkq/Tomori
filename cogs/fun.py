@@ -78,7 +78,10 @@ async def f_me(client, conn, context, who):
         dat = await conn.fetchrow("SELECT * FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=who.id))
     background = dat["background"]
     if not background:
-        background = random.choice(background_list)
+        if not message.server.id in konoha_servers:
+            background = random.choice(background_list)
+        else:
+            background = random.choice(konoha_background_list)
         await conn.execute("UPDATE users SET background = '{back}' WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
             back=random.choice(background_list),
             stats_type=stats_type,

@@ -266,7 +266,7 @@ async def statuses():
             for server in client.servers:
                 # if server.id in not_log_servers:
                 #     continue
-                users_count += len(server.members)
+                users_count += server.member_count
         except:
             pass
         await client.change_presence(game=discord.Game(type=3, name="{users_count} users | !help".format(users_count=users_count)))
@@ -461,7 +461,16 @@ async def on_ready():
 @client.event
 async def on_command_error(error, ctx):
     if isinstance(error, commands.CommandOnCooldown):
-        await client.send_message(ctx.message.channel, "{who}, command is on cooldown. Wait {seconds} seconds".format(who=ctx.message.author.mention, seconds=int(error.retry_after)))
+        msg = await client.send_message(ctx.message.channel, "{who}, command is on cooldown. Wait {seconds} seconds".format(who=ctx.message.author.mention, seconds=int(error.retry_after)))
+        try:
+            await client.delete_message(ctx.message)
+        except:
+            pass
+        await asyncio.sleep(5)
+        try:
+            await client.delete_message(msg)
+        except:
+            pass
     pass
     # elif isinstance(error, commands.MissingRequiredArgument):
     #     await send_cmd_help(ctx)
@@ -559,6 +568,11 @@ async def buy(context, *, value: str):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def shop(context, page: int=None):
     await e_shop(client, conn, context, page)
+
+@client.command(pass_context=True, name="lvlup", help="Показать список ролей за уровень.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def lvlup(context, page: int=None):
+    await o_lvlup(client, conn, context, page)
 
 @client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -983,7 +997,7 @@ async def giveaway(context, count: int=300, message: str="Розыгрыш!"):
 
 @client.event
 async def on_message(message):
-    if not message.channel.is_private and message.server.id in not_log_servers:
+    if not message.channel.is_private and message.server.id in not_log_servers or message.server.id in konoha_servers:
         return
     await u_check_support(client, conn, logger, message)
 
@@ -1004,7 +1018,7 @@ async def on_message(message):
 
     client.loop.create_task(check_words(client, message))
 
-    if ('уруру' in message.content.lower()) and not message.author.bot and (message.author.id == '490334103888068630' or message.author.id == '306055749023563778'):
+    if ('уруру' in message.content.lower()) and not message.author.bot and (message.author.id == '414485183396315146' or message.author.id == '306055749023563778'):
         em = discord.Embed(colour=0xC5934B)
         em.description = "{who}, {ururu}".format(
             who=message.author.display_name+"#"+message.author.discriminator,

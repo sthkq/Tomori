@@ -352,8 +352,11 @@ async def e_br(client, conn, context, count):
             return
         else:
             summ = int(count)
-        if summ > 5000:
-            em.description = locale[lang]["economy_max_bet_is_5000"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), const[0])
+        if summ > BR_MAX_BET:
+            em.description = locale[lang]["economy_max_bet_is"].format(
+                who=clear_name(message.author.display_name+"#"+message.author.discriminator),
+                bet=BR_MAX_BET,
+                money=const["server_money"])
             await client.send_message(message.channel, embed=em)
             return
         if summ == 0:
@@ -361,6 +364,7 @@ async def e_br(client, conn, context, count):
             await client.send_message(message.channel, embed=em)
             return
         if (random.randint(0, 99)) > 49:
+            summ = int(summ/2)
             await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
                 cash=dat["cash"] + summ,
                 stats_type=stats_type,
@@ -439,8 +443,11 @@ async def e_slots(client, conn, context, count):
             return
         else:
             summ = int(count)
-        if summ > 1000:
-            em.description = locale[lang]["economy_max_bet_is_1000"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), const["server_money"])
+        if summ > SLOTS_MAX_BET:
+            em.description = locale[lang]["economy_max_bet_is"].format(
+                who=clear_name(message.author.display_name+"#"+message.author.discriminator),
+                bet=SLOTS_MAX_BET,
+                money=const["server_money"])
             await client.send_message(message.channel, embed=em)
             return
         if summ == 0:
@@ -490,7 +497,7 @@ async def e_slots(client, conn, context, count):
                 slot1=slots_ver[0],
                 slot2=slots_ver[1],
                 slot3=slots_ver[2],
-                response=locale[lang]["economy_you_win"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), rets, const[0])
+                response=locale[lang]["economy_you_win"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), rets, const["server_money"])
             )
         else:
             await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
@@ -612,7 +619,7 @@ async def e_buy(client, conn, context, value):
 async def e_shop(client, conn, context, page):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -650,11 +657,12 @@ async def e_shop(client, conn, context, page):
             _role = discord.utils.get(message.server.roles, id=role["name"])
             if _role:
                 em.add_field(
-                    name="#{index} {name}".format(index=index+1+(page-1)*25, name=_role.name),
-                    value=role["condition"]+" "+const["server_money"],
+                    name="󠂪",
+                    #name="#{index} {name}".format(index=index+1+(page-1)*25, name=_role.name),
+                    value="**#{index} {name}".format(index=index+1+(page-1)*25, name=_role.mention)+"**\n"+role["condition"]+" "+const["server_money"],
                     inline=True
                 )
-        em.set_footer(text=locale[lang]["other_footer_page"].format(number=page, length=pages))
+        em.set_footer(text=locale[lang]["other_footer_page"].format(number=page, length=pages)+" | "+locale[lang]["other_shop_how_to_buy"].format(prefix=const["prefix"]))
     else:
         em.description = locale[lang]["global_list_is_empty"]
     await client.send_message(message.channel, embed=em)

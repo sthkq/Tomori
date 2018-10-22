@@ -282,20 +282,31 @@ xp_lvlup_list = {
 "3780":27,
 "4060":28,
 "4350":29,
-"4650":30
+"4650":30,
+"4960":31,
+"5280":32,
+"5610":33,
+"5950":34,
+"6300":35,
+"6660":36,
+"7030":37,
+"7410":38,
+"7800":39,
+"8200":40,
+"8610":41,
+"9030":42,
+"9460":43,
+"9900":44,
+"10350":45,
+"10810":46,
+"11280":47,
+"11760":48,
+"12250":49,
+"12750":50
 }
 
 lvlup_image_url = "https://discord.band/images/lvlup.png"
-
-
-
-
-
-piar_statuses = [
-"discord.gg/tomori • Мир Томори",
-"discord.gg/8FdcCXA • LemStudio [FunVoice]",
-"discord.gg/G2Tynh4 • Neko.Land"
-]
+lvlup_image_konoha_url = "https://discord.band/images/lvlupkonoha.png"
 
 
 background_change_price = 1000
@@ -346,10 +357,18 @@ background_name_list = [
 'Your Lie In April'
 ]
 
+konoha_background_list = [
+'konoha_primary.jpg'
+]
+
+konoha_background_name_list = [
+'Konoha'
+]
+
 
 lang_filter = {
     "475425777215864833": {
-        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'\";:][\{\}/?.«»₽> ,<–ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
+        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'’\";:][\{\}/?.«»₽> ,<–ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
         "report_channel": "484805775034810378"
     }
 }
@@ -561,6 +580,11 @@ reaction_avanturist_ids = [
 	"465568335904505886"
 ]
 
+
+BR_MAX_BET = 10000
+SLOTS_MAX_BET = 5000
+
+
 not_log_servers = [
 "264445053596991498",
 "110373943822540800"
@@ -585,12 +609,13 @@ uptimes = 0
 global top_servers
 top_servers = []
 
-tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for Tomori") \
-[Patreon](https://www.patreon.com/tomori_discord "Donate") \
-[YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Tomori Project\'s channel") \
-[Telegram](https://t.me/TomoriDiscord "Our telegram channel") \
-[Website](https://discord.band "Our website") \
-[VK](https://vk.com/tomori_discord "Our group on vk.com")'
+# tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for Tomori") \
+# [Patreon](https://www.patreon.com/tomori_discord "Donate") \
+# [YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Tomori Project\'s channel") \
+# [Telegram](https://t.me/TomoriDiscord "Our telegram channel") \
+# [Website](https://discord.band "Our website") \
+# [VK](https://vk.com/tomori_discord "Our group on vk.com")'
+tomori_links = '[Join Konoha](https://discord.gg/PErt9KY "Join anime Naruto")'
 
 def clear_name(name):
 	return re.sub(r'[\';"\\]+', '', name)

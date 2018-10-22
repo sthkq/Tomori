@@ -31,7 +31,7 @@ __version__ = "3.25.0"
 logger = logging.getLogger('konoha')
 logger.setLevel(logging.DEBUG)
 now = datetime.now()
-logname = 'logs/{}_{}.log'.format(now.day, now.month)
+logname = 'logs/konoha-{}_{}.log'.format(now.day, now.month)
 try:
     f = open(logname, 'r')
 except:
@@ -180,14 +180,7 @@ async def statuses():
         await client.change_presence(game=discord.Game(type=3, name="на Коноху | !help"))
         await asyncio.sleep(20)
 
-        users_count = 0
-        try:
-            for server in client.servers:
-                # if server.id in not_log_servers:
-                #     continue
-                users_count += len(server.members)
-        except:
-            pass
+        users_count = client.get_server("502913055559254036").member_count
         await client.change_presence(game=discord.Game(type=3, name="на {users_count} шиноби | !help".format(users_count=users_count)))
         await asyncio.sleep(20)
 
@@ -284,7 +277,16 @@ async def on_ready():
 @client.event
 async def on_command_error(error, ctx):
     if isinstance(error, commands.CommandOnCooldown):
-        await client.send_message(ctx.message.channel, "{who}, command is on cooldown. Wait {seconds} seconds".format(who=ctx.message.author.mention, seconds=int(error.retry_after)))
+        msg = await client.send_message(ctx.message.channel, "{who}, Чакра закончилась, восстановление через {seconds} секунд".format(who=ctx.message.author.mention, seconds=int(error.retry_after)))
+        try:
+            await client.delete_message(ctx.message)
+        except:
+            pass
+        await asyncio.sleep(5)
+        try:
+            await client.delete_message(msg)
+        except:
+            pass
     pass
 
 
@@ -329,6 +331,11 @@ async def buy(context, *, value: str):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def shop(context, page: int=None):
     await e_shop(client, conn, context, page)
+
+@client.command(pass_context=True, name="lvlup", help="Показать список ролей за уровень.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def lvlup(context, page: int=None):
+    await o_lvlup(client, conn, context, page)
 
 @client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -486,6 +493,11 @@ async def shiki(context, *, name: str):
 # @commands.cooldown(1, 1, commands.BucketType.user)
 # async def google_search(context, *, name: str):
 #     await api_google_search(client, conn, logger, context, name)
+
+@client.command(pass_context=True, name="createclan", help="Создать клан.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def createclan(context, *, name: str):
+    await c_createclan(client, conn, context, name)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
@@ -660,7 +672,7 @@ async def on_message(message):
             id=message.author.id)
         )
     else:
-        await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background, stats_type) VALUES('{}', '{}', '{}', {}, {}, {}, '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(background_list), stats_type))
+        await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background, stats_type) VALUES('{}', '{}', '{}', {}, {}, {}, '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(konoha_background_list), stats_type))
 
     if message.content.startswith(serv["prefix"]) or message.content.startswith("!help"):
         await client.process_commands(message)

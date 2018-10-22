@@ -550,6 +550,66 @@ async def o_help(client, conn, context):
     await client.send_message(message.channel, embed=em)
     return
 
+
+async def o_lvlup(client, conn, context, page):
+    message = context.message
+    server_id = message.server.id
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    autorole = const["autorole_id"]
+    if autorole:
+        autorole = discord.utils.get(message.server.roles, id=autorole)
+    dat = await conn.fetchrow("SELECT COUNT(condition) FROM mods WHERE type = 'lvlup' AND server_id = '{server_id}'".format(server_id=server_id))
+    all_count = dat[0]
+    pages = (((all_count - 1) // 24) + 1)
+    if not page:
+        page = 1
+    if all_count == 0 and not autorole:
+        em.description = locale[lang]["global_list_is_empty"]
+        await client.send_message(message.channel, embed=em)
+        return
+    if page > pages and not (page == 1 and autorole):
+        em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
+        await client.send_message(message.channel, embed=em)
+        return
+    if page == 1 and autorole:
+        em.add_field(
+            name=locale[lang]["other_lvlup_autorole_name"],
+            value=autorole.mention,
+            inline=True
+        )
+    dat = await conn.fetch("SELECT * FROM mods WHERE type = 'lvlup' AND server_id = '{server_id}' ORDER BY condition::int ASC LIMIT 24 OFFSET {offset}".format(server_id=server_id, offset=(page-1)*24))
+    if dat:
+        for index, role in enumerate(dat):
+            _role = discord.utils.get(message.server.roles, id=role["value"])
+            if _role:
+                em.add_field(
+                    name="{lvl} {name}".format(lvl=role["condition"], name=locale[lang]["other_lvlup_lvl_name"]),
+                    value=_role.mention,
+                    inline=True
+                )
+    else:
+        em.description = locale[lang]["global_list_is_empty"]
+    await client.send_message(message.channel, embed=em)
+    return
+
+
 async def o_backgrounds(client, conn, context):
     message = context.message
     server_id = message.server.id
@@ -571,12 +631,18 @@ async def o_backgrounds(client, conn, context):
         await client.delete_message(message)
     except:
         pass
+    if not message.server.id in konoha_servers:
+        back_list = random.choice(background_list)
+        back_name_list = background_name_list
+    else:
+        back_list = random.choice(konoha_background_list)
+        back_name_list = konoha_background_name_list
     em.title = locale[lang]["other_backgrounds_title"]
-    if len(background_list) == 0:
+    if len(back_list) == 0:
         em.description = locale[lang]["other_backgrounds_list_is_empty"]
         await client.send_message(message.channel, embed=em)
         return
-    for i, back in enumerate(background_name_list):
+    for i, back in enumerate(back_name_list):
         em.add_field(
             name=locale[lang]["other_backgrounds_element"].format(
                 position=i+1,
@@ -618,13 +684,17 @@ async def o_set(client, conn, context, arg1, arg2, args):
             )
             await client.send_message(message.channel, embed=em)
             return
+        if not message.server.id in konoha_servers:
+            back_list = random.choice(background_list)
+        else:
+            back_list = random.choice(konoha_background_list)
         if args:
             arg2 = arg2 + " " + args
-        if arg2.isdigit() and int(arg2) <= len(background_list) and int(arg2) > 0:
-            arg2 = background_list[int(arg2)-1]
+        if arg2.isdigit() and int(arg2) <= len(back_list) and int(arg2) > 0:
+            arg2 = back_list[int(arg2)-1]
         else:
             arg2 = arg2.lower().replace(" ", "_") + ".jpg"
-        if not arg2 in background_list:
+        if not arg2 in back_list:
             em.description = locale[lang]["other_incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
