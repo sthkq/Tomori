@@ -325,7 +325,7 @@ async def o_list(client, conn, context, page):
         await client.delete_message(message)
     except:
         pass
-    dat = await conn.fetchrow("SELECT COUNT(name) FROM settings")
+    dat = await conn.fetchrow("SELECT COUNT(name) FROM settings WHERE likes > 0")
     all_count = dat[0]
     pages = (((all_count - 1) // 10) + 1)
     if not page:
@@ -339,7 +339,7 @@ async def o_list(client, conn, context, page):
         em.description = _locale["global_list_is_empty"]
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
+    dat = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings WHERE likes > 0 ORDER BY likes DESC, like_time DESC LIMIT 10 OFFSET {offset}".format(offset=(page-1)*10))
     for index, server in enumerate(dat):
         member_count = 0
         serv = client.get_server(server["discord_id"])
@@ -441,7 +441,7 @@ async def o_ping(client, conn, context):
 async def o_help(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -554,7 +554,7 @@ async def o_help(client, conn, context):
 async def o_lvlup(client, conn, context, page):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -605,9 +605,63 @@ async def o_lvlup(client, conn, context, page):
                     inline=True
                 )
     else:
-        em.description = locale[lang]["global_list_is_empty"]
+        if not autorole:
+            em.description = locale[lang]["global_list_is_empty"]
     await client.send_message(message.channel, embed=em)
     return
+
+
+async def check_lvl_for_sync(client, conn, member, const, roles_data):
+    if not const["is_global"]:
+        stats_type = member.server.id
+    else:
+        stats_type = "global"
+    dat = await conn.fetchrow("SELECT xp_count FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{discord_id}'".format(stats_type=stats_type, discord_id=member.id))
+    if not dat:
+        return
+    lvl = 0
+    i = 1
+    if dat["xp_count"] > 0:
+        while dat["xp_count"] >= (i * (i + 1) * 5):
+            lvl = lvl + 1
+            i = i + 1
+    lvl = int(lvl/5)*5
+    roles = []
+    is_new_role = False
+    for role in member.roles:
+        if not any(role.id==data["value"] for data in roles_data):
+            roles.append(role)
+    for data in roles_data:
+        if not data["condition"] == str(lvl):
+            continue
+        role = discord.utils.get(member.server.roles, id=data["value"])
+        if role and not role in roles:
+            is_new_role = True
+            roles.append(role)
+    if is_new_role:
+        try:
+            await client.replace_roles(member, *roles)
+        except:
+            pass
+
+async def o_synclvlup(client, conn, context):
+    message = context.message
+    server_id = message.server.id
+    const = await get_cached_server(conn, server_id)
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    roles_data = await conn.fetch("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'lvlup'".format(
+        server_id=message.server.id
+    ))
+    if not roles_data:
+        await client.send_message(message.channel, "<:users:492827033026560020>")
+        return
+    for member in message.server.members:
+        await check_lvl_for_sync(client, conn, member, const, roles_data)
+    await client.send_message(message.channel, "<:kanna:491965559907418112>")
 
 
 async def o_backgrounds(client, conn, context):
@@ -657,7 +711,7 @@ async def o_backgrounds(client, conn, context):
 async def o_set(client, conn, context, arg1, arg2, args):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -678,16 +732,16 @@ async def o_set(client, conn, context, arg1, arg2, args):
 
     if arg1 == "background" or arg1 == "back":
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not message.server.id in konoha_servers:
-            back_list = random.choice(background_list)
+            back_list = background_list
         else:
-            back_list = random.choice(konoha_background_list)
+            back_list = konoha_background_list
         if args:
             arg2 = arg2 + " " + args
         if arg2.isdigit() and int(arg2) <= len(back_list) and int(arg2) > 0:
@@ -695,13 +749,13 @@ async def o_set(client, conn, context, arg1, arg2, args):
         else:
             arg2 = arg2.lower().replace(" ", "_") + ".jpg"
         if not arg2 in back_list:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
             await client.send_message(message.channel, embed=em)
             return
-        if message.server.id in local_stats_servers:
+        if not const["is_global"]:
             stats_type = message.server.id
         else:
             stats_type = "global"
@@ -719,7 +773,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
                 await client.send_message(message.channel, embed=em)
                 return
             await conn.execute("UPDATE users SET cash = {cash}, background = '{back}' WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
-                cash=dat[0] - background_change_price,
+                cash=dat["cash"] - background_change_price,
                 back=arg2,
                 stats_type=stats_type,
                 id=message.author.id
@@ -733,6 +787,61 @@ async def o_set(client, conn, context, arg1, arg2, args):
         await client.send_message(message.channel, embed=em)
         return
 
+    if arg1 == "badges" or arg1 == "badge":
+        if not message.author.id in admin_list:
+            return
+        if not arg2:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="badges"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        arg2 = clear_name(arg2).lower()
+        args = clear_name(args)
+        who = discord.utils.get(message.server.members, name=arg2)
+        if not who:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            who = discord.utils.get(message.server.members, id=arg2)
+        if not who:
+            em.description = locale[lang]["incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'badges' AND name = '{member}'".format(member=who.id))
+        badges = []
+        for word in args.split(" "):
+            if word.lower() in badges_list:
+                badges.append(word.lower())
+        if dat:
+            for badge in dat["arguments"]:
+                if badge in badges_list:
+                    badges.append(badge)
+            await conn.execute("UPDATE mods SET arguments=ARRAY['{args}'] WHERE type = 'badges' AND name = '{name}'".format(
+                name=who.id,
+                args="', '".join(badges)
+            ))
+        else:
+            await conn.execute("INSERT INTO mods(name, type, arguments) VALUES('{name}', 'badges', ARRAY['{args}'])".format(
+                name=who.id,
+                args="', '".join(badges)
+            ))
+        em.description = "{who}, значки пользователя `{name}` успешно обновлены".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            name=who.display_name+"#"+who.discriminator
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
     if arg1 == "prefix":
         if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
             em.description = locale[lang]["global_not_allow_to_use"].format(
@@ -741,7 +850,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="prefix"
             )
@@ -776,7 +885,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -789,7 +898,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
             role = discord.utils.get(message.server.roles, id=arg2)
         if not role:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -822,21 +931,21 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="lvl"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not args:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="role"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not arg2.isdigit():
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="lvl"
             )
@@ -847,7 +956,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             args = re.sub(r'[<@#&!>]+', '', args.lower())
             role = discord.utils.get(message.server.roles, id=args)
         if not role:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="role"
             )
@@ -886,14 +995,14 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not args:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="cost"
             )
@@ -911,14 +1020,14 @@ async def o_set(client, conn, context, arg1, arg2, args):
             arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
             role = discord.utils.get(message.server.roles, id=arg2)
         if not role:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not args.isdigit():
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="cost"
             )
@@ -955,7 +1064,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -967,7 +1076,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
         arg2 = arg2.lower()
         arg2 = short_locales.get(arg2, arg2)
         if not arg2 in locale.keys():
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1001,14 +1110,14 @@ async def o_set(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not args:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="value"
             )
@@ -1018,7 +1127,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
         arg2 = clear_name(arg2).lower()
         args = clear_name(args)
         if not arg2:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1045,15 +1154,76 @@ async def o_set(client, conn, context, arg1, arg2, args):
         return
 
 
+    if arg1 == "stream":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="text"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+
+        arg2 = clear_name(arg2).lower()
+        args = clear_name(args)
+        who = discord.utils.get(message.server.members, name=arg2)
+        if not who:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            who = discord.utils.get(message.server.members, id=arg2)
+        if not who:
+            em.description = locale[lang]["incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'stream_notification' AND name = '{member}' AND server_id = '{server_id}'".format(server_id=server_id, member=who.id))
+        if dat:
+            await conn.execute("UPDATE mods SET name='{name}', server_id='{server_id}', type='{type}', condition='{cond}', value='{value}' WHERE id={id}".format(
+                name=who.id,
+                server_id=message.server.id,
+                type="stream_notification",
+                cond=message.channel.id,
+                value=args,
+                id=dat["id"]
+            ))
+        else:
+            await conn.execute("INSERT INTO mods(name, server_id, type, condition, value) VALUES('{name}', '{id}', '{type}', '{cond}', '{value}')".format(
+                name=who.id,
+                id=message.server.id,
+                type="stream_notification",
+                cond=message.channel.id,
+                value=args
+            ))
+        em.description = locale[lang]["other_stream_success_response"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            name=who.display_name+"#"+who.discriminator
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
     if not arg1:
-        em.description = locale[lang]["other_missed_argument"].format(
+        em.description = locale[lang]["missed_argument"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
             arg="category"
         )
         await client.send_message(message.channel, embed=em)
         return
 
-    em.description = locale[lang]["other_incorrect_argument"].format(
+    em.description = locale[lang]["incorrect_argument"].format(
         who=message.author.display_name+"#"+message.author.discriminator,
         arg="category"
     )
@@ -1131,14 +1301,14 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="lvl"
             )
             await client.send_message(message.channel, embed=em)
             return
         if not arg2.isdigit():
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="lvl"
             )
@@ -1161,6 +1331,67 @@ async def o_remove(client, conn, context, arg1, arg2, args):
         return
 
 
+    if arg1 == "badges" or arg1 == "badge":
+        if not message.author.id in admin_list:
+            return
+        if not arg2:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        arg2 = clear_name(arg2).lower()
+        who = discord.utils.get(message.server.members, name=arg2)
+        if not who:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            who = discord.utils.get(message.server.members, id=arg2)
+        if not who:
+            em.description = locale[lang]["incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not args:
+            await conn.execute("DELETE FROM mods WHERE type = 'badges' AND name = '{name}'".format(name=who.id))
+            em.description = "{who}, значки пользователя `{name}` успешно удалены".format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=who.display_name+"#"+who.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        args = clear_name(args).lower()
+
+        dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'badges' AND name = '{member}'".format(member=who.id))
+        if dat:
+            badges = []
+            for badge in dat["arguments"]:
+                if badge in badges_list and not badge in args:
+                    badges.append(badge)
+            if badges:
+                await conn.execute("UPDATE mods SET arguments=ARRAY['{args}'] WHERE type = 'badges' AND name='{name}'".format(
+                    name=who.id,
+                    args="', '".join(badges)
+                ))
+                em.description = "{who}, значки пользователя `{name}` успешно обновлены".format(
+                    who=message.author.display_name+"#"+message.author.discriminator,
+                    name=who.display_name+"#"+who.discriminator
+                )
+            else:
+                await conn.execute("DELETE FROM mods WHERE type = 'badges' AND name = '{name}'".format(name=who.id))
+                em.description = "{who}, значки пользователя `{name}` удалены".format(
+                    who=message.author.display_name+"#"+message.author.discriminator,
+                    name=who.display_name+"#"+who.discriminator
+                )
+        else:
+            em.description = "{who}, у пользователя `{name}` нет значков".format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                name=who.display_name+"#"+who.discriminator
+            )
+        await client.send_message(message.channel, embed=em)
+        return
+
     if arg1 == "webhook" or arg1 == "wh":
         if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
             em.description = locale[lang]["global_not_allow_to_use"].format(
@@ -1169,7 +1400,7 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1178,7 +1409,7 @@ async def o_remove(client, conn, context, arg1, arg2, args):
 
         arg2 = clear_name(arg2).lower()
         if not arg2:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1200,6 +1431,42 @@ async def o_remove(client, conn, context, arg1, arg2, args):
         return
 
 
+    if arg1 == "stream":
+        if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
+            em.description = locale[lang]["global_not_allow_to_use"].format(
+                who=message.author.display_name+"#"+message.author.discriminator
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        if not arg2:
+            em.description = locale[lang]["missed_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+
+        arg2 = clear_name(arg2).lower()
+        who = discord.utils.get(message.server.members, name=arg2)
+        if not who:
+            arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
+            who = discord.utils.get(message.server.members, id=arg2)
+        if not who:
+            em.description = locale[lang]["incorrect_argument"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                arg="user"
+            )
+            await client.send_message(message.channel, embed=em)
+            return
+        await conn.execute("DELETE FROM mods WHERE type = 'stream_notification' AND name = '{member}' AND server_id = '{server_id}'".format(server_id=server_id, member=who.id))
+        em.description = locale[lang]["other_stream_success_delete"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            name=who.display_name+"#"+who.discriminator
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+
+
     if arg1 == "shop":
         if not message.author == message.server.owner and not any(role.permissions.administrator for role in message.author.roles):
             em.description = locale[lang]["global_not_allow_to_use"].format(
@@ -1208,7 +1475,7 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         if not arg2:
-            em.description = locale[lang]["other_missed_argument"].format(
+            em.description = locale[lang]["missed_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1222,7 +1489,7 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             arg2 = re.sub(r'[<@#&!>]+', '', arg2.lower())
             role = discord.utils.get(message.server.roles, id=arg2)
         if not role:
-            em.description = locale[lang]["other_incorrect_argument"].format(
+            em.description = locale[lang]["incorrect_argument"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 arg="name"
             )
@@ -1245,14 +1512,14 @@ async def o_remove(client, conn, context, arg1, arg2, args):
 
 
     if not arg1:
-        em.description = locale[lang]["other_missed_argument"].format(
+        em.description = locale[lang]["missed_argument"].format(
             who=message.author.display_name+"#"+message.author.discriminator,
             arg="category"
         )
         await client.send_message(message.channel, embed=em)
         return
 
-    em.description = locale[lang]["other_incorrect_argument"].format(
+    em.description = locale[lang]["incorrect_argument"].format(
         who=message.author.display_name+"#"+message.author.discriminator,
         arg="category"
     )

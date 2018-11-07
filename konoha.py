@@ -20,12 +20,13 @@ from cogs.admin import *
 from cogs.other import *
 from cogs.util import *
 from cogs.locale import *
+from cogs.guilds import *
 from cogs.api import *
 from cogs.ids import *
 
 
 __name__ = "Konoha"
-__version__ = "3.25.0"
+__version__ = "3.27.0"
 
 
 logger = logging.getLogger('konoha')
@@ -141,11 +142,6 @@ def is_it_support():
         return ctx.message.author.id in support_list
     return commands.check(predicate)
 
-def is_it_local_server():
-    def predicate(ctx):
-        return True if ctx.message.server.id in local_stats_servers else False
-    return commands.check(predicate)
-
 
 
 
@@ -238,7 +234,7 @@ async def on_member_join(member):
 @client.event
 async def on_member_remove(member):
     logger.info("{0.name} | {0.id} removed from server - {1.name} | {1.id}\n".format(member, member.server))
-    await client.send_message(client.get_channel('486591862157606913'), "*{2}*\n``({0.name} | {0.mention}) <== [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
+    #await client.send_message(client.get_channel('486591862157606913'), "*{2}*\n``({0.name} | {0.mention}) <== [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
     dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(member.server.id))
     if dat:
         welcome_channel = discord.utils.get(member.server.channels, id=dat["welcome_channel_id"])
@@ -337,6 +333,12 @@ async def shop(context, page: int=None):
 async def lvlup(context, page: int=None):
     await o_lvlup(client, conn, context, page)
 
+@client.command(pass_context=True, name="synclvlup", help="Синхронизировать уровни участников и роли за уровень.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def synclvlup(context):
+    await o_synclvlup(client, conn, context)
+
 @client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
@@ -419,7 +421,6 @@ async def give(context, who: discord.Member, count: str):
 
 @client.command(pass_context=True, name="gift")
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_local_server()
 @is_it_owner()
 async def gift(context, count: int):
     await e_gift(client, conn, context, count)
@@ -494,10 +495,10 @@ async def shiki(context, *, name: str):
 # async def google_search(context, *, name: str):
 #     await api_google_search(client, conn, logger, context, name)
 
-@client.command(pass_context=True, name="createclan", help="Создать клан.")
+@client.command(pass_context=True, name="guild", help="Гильдии.")
 @commands.cooldown(1, 1, commands.BucketType.user)
-async def createclan(context, *, name: str):
-    await c_createclan(client, conn, context, name)
+async def guild(context, category: str, arg1: str=None, *, args: str=None):
+    await g_guild(client, conn, context, category, arg1, args)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
@@ -643,7 +644,7 @@ async def on_message(message):
 
     client.loop.create_task(check_words(client, message))
 
-    if message.server.id in local_stats_servers:
+    if not serv["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"

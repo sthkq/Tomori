@@ -16,8 +16,8 @@ from cogs.const import *
 from cogs.locale import *
 
 
-shikimori = pyshiki.Api(settings["shiki_username"], settings["shiki_password"])
-shiki_url = "https://shikimori.org"
+# shikimori = pyshiki.Api(settings["shiki_username"], settings["shiki_password"])
+# shiki_url = "https://shikimori.org"
 
 shiki_kinds = {
 "tv":"Сериал",
@@ -38,7 +38,7 @@ shiki_statuses = {
 async def api_shiki(client, conn, logger, context, name):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{id}'".format(id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -108,7 +108,7 @@ async def api_shiki(client, conn, logger, context, name):
 async def api_google_search(client, conn, logger, context, name):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{id}'".format(id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(

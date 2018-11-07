@@ -21,12 +21,13 @@ from cogs.admin import *
 from cogs.other import *
 from cogs.util import *
 from cogs.locale import *
-from cogs.api import *
+from cogs.guilds import *
+# from cogs.api import *
 from cogs.ids import *
 
 
 __name__ = "Tomori"
-__version__ = "3.24.0"
+__version__ = "3.27.0"
 
 
 logger = logging.getLogger('tomori')
@@ -142,11 +143,6 @@ def is_it_support():
         return ctx.message.author.id in support_list
     return commands.check(predicate)
 
-def is_it_local_server():
-    def predicate(ctx):
-        return True if ctx.message.server.id in local_stats_servers else False
-    return commands.check(predicate)
-
 
 
 
@@ -178,8 +174,8 @@ async def working():
 async def monitoring():
     await client.wait_until_ready()
     while not client.is_closed:
-        latest = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY like_time DESC LIMIT 10")
-        top = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings ORDER BY likes DESC, like_time DESC LIMIT 10")
+        latest = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings WHERE likes > 0 ORDER BY like_time DESC LIMIT 10")
+        top = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings WHERE likes > 0 ORDER BY likes DESC, like_time DESC LIMIT 10")
         for channel_id in monitoring_channels.keys():
             channel = client.get_channel(channel_id)
             if not channel:
@@ -264,17 +260,11 @@ async def statuses():
         users_count = 0
         try:
             for server in client.servers:
-                # if server.id in not_log_servers:
-                #     continue
                 users_count += server.member_count
         except:
             pass
         await client.change_presence(game=discord.Game(type=3, name="{users_count} users | !help".format(users_count=users_count)))
         await asyncio.sleep(20)
-
-        # for status in piar_statuses:
-        #     await client.change_presence(game=discord.Game(type=1, name=status))
-        #     await asyncio.sleep(10)
 
 
 
@@ -315,24 +305,21 @@ async def on_server_join(server):
         await conn.execute("INSERT INTO settings(name, discord_id, locale) VALUES('{name}', '{discord_id}', '{locale}')".format(name=clear_name(server.name[:50]), discord_id=server.id, locale=lang))
     await client.send_message(
         client.get_channel(log_join_leave_server_channel_id),
-        "Томори добавили на сервер {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=len(server.members))
+        "\🔵 Томори добавили на сервер {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=server.member_count)
     )
-    # for s in admin_list:
-    #     await client.send_message(discord.utils.get(client.get_server('327029562535968768').members, id=s), "Томори добавили на сервер {} | {}. ({} участников)".format(server.name, server.id,len(server.members)))
 
 @client.event
 async def on_server_remove(server):
     logger.info("Removed from server - {} | id - {}\n".format(server.name, server.id))
     await client.send_message(
         client.get_channel(log_join_leave_server_channel_id),
-        "Томори удалили с сервера {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=len(server.members))
+        "\🔴 Томори удалили с сервера {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=server.member_count)
     )
-    # for s in admin_list:
-    #     await client.send_message(discord.utils.get(client.get_server('327029562535968768').members, id=s), "Томори удалили с сервера {} | {}.".format(server.name, server.id))
 
-# @client.event
-# async def on_voice_state_update(before, after):
-#     await u_voice_state_update(client, conn, logger, before, after)
+
+@client.event
+async def on_voice_state_update(before, after):
+    await u_voice_state_update(client, conn, logger, before, after)
 
 @client.event
 async def on_socket_raw_receive(raw_msg):
@@ -353,13 +340,33 @@ async def on_socket_raw_receive(raw_msg):
 
 
 
+@client.event
+async def on_member_update(before, after):
+    # STREAM NOTIFY
+    if before.game != after.game and after.game and after.game.type == 1:
+        data = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND name = '{member}' AND type = 'stream_notification'".format(server=before.server.id, member=before.id))
+        if data:
+            channel = client.get_channel(data["condition"])
+            if channel:
+                name = ""
+                url = ""
+                if after.game.name:
+                    name = after.game.name
+                if after.game.url:
+                    url = after.game.url
+                await client.send_message(channel, data["value"].format(
+                    name=name,
+                    url=url
+                ))
+
+
 
 
 @client.event
 async def on_member_join(member):
     logger.info("{0.name} | {0.id} joined at server - {1.name} | {1.id}\n".format(member, member.server))
     if not member.server.id in not_log_servers:
-        await client.send_message(client.get_channel('486591862157606913'), "**{2}**\n``({0.name} | {0.mention}) ==> [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
+        await client.send_message(client.get_channel('486591862157606913'), "\🔵 **{2}**\n``({0.name} | {0.mention}) ==> [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
     dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{id}'".format(id=member.server.id))
     black = await conn.fetchrow("SELECT * FROM black_list_not_ddos WHERE discord_id = '{id}'".format(id=member.id))
     if black:
@@ -377,14 +384,16 @@ async def on_member_join(member):
                 value=reason,
                 inline=False
             )
-            c_ban.set_footer(text="ID: {id} • {time}".format(
-                id=member.id,
-                time=time.ctime(time.time())
+            c_ban.set_footer(text="ID: {id}".format(
+                id=member.id
             ))
-            try:
-                await client.send_message(member.server.owner, embed=c_ban)
-            except:
-                pass
+            c_ban.timestamp = datetime.now()
+            for user in member.server.members:
+                if any(role.permissions.administrator for role in user.roles) or user.id == member.server.owner.id:
+                    try:
+                        await client.send_message(user, embed=c_ban)
+                    except:
+                        pass
 
     await u_check_travelling(client, member)
 
@@ -396,20 +405,58 @@ async def on_member_join(member):
             pass
 
     if dat:
+        roles = []
         role = discord.utils.get(member.server.roles, id=dat["autorole_id"])
         if role:
-            await client.add_roles(member, role)
+            roles.append(role)
+        role_dat = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND name = '{member}' AND type = 'saved_roles'".format(server=member.server.id, member=member.id))
+        if role_dat:
+            role_ids = role_dat["arguments"]
+            if role_ids:
+                roles = []
+                for role_id in role_ids:
+                    role = discord.utils.get(member.server.roles, id=str(role_id))
+                    if role:
+                        roles.append(role)
+        if roles:
+            try:
+                await client.add_roles(member, *roles)
+            except:
+                pass
 
         welcome_channel = client.get_channel(dat["welcome_channel_id"])
         if welcome_channel:
-            await send_welcome_pic(client, welcome_channel, member, dat)
+            try:
+                await send_welcome_pic(client, welcome_channel, member, dat)
+            except:
+                pass
 
 
 @client.event
 async def on_member_remove(member):
     logger.info("{0.name} | {0.id} removed from server - {1.name} | {1.id}\n".format(member, member.server))
-    await client.send_message(client.get_channel('486591862157606913'), "*{2}*\n``({0.name} | {0.mention}) <== [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
+    await client.send_message(client.get_channel('486591862157606913'), "\🔴 *{2}*\n``({0.name} | {0.mention}) <== [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
     dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(member.server.id))
+    roles = []
+    for role in member.roles:
+        if role.name == "@everyone":
+            continue
+        roles.append(role.id)
+    if roles:
+        roles = "', '".join(roles)
+        role_dat = await conn.fetchrow("SELECT * FROM mods WHERE server_id = '{server}' AND name = '{member}' AND type = 'saved_roles'".format(server=member.server.id, member=member.id))
+        if role_dat:
+            await conn.execute("UPDATE mods SET arguments = ARRAY['{roles}'] WHERE server_id = '{server}' AND name = '{member}' AND type = 'saved_roles'".format(
+                server=member.server.id,
+                member=member.id,
+                roles=roles
+            ))
+        else:
+            await conn.execute("INSERT INTO mods(server_id, type, name, arguments) VALUES ('{server}', 'saved_roles', '{member}', ARRAY['{roles}'])".format(
+                server=member.server.id,
+                member=member.id,
+                roles=roles
+            ))
     if dat:
         welcome_channel = discord.utils.get(member.server.channels, id=dat["welcome_channel_id"])
         if welcome_channel and dat["welcome_leave_text"]:
@@ -445,6 +492,7 @@ async def on_ready():
     client.loop.create_task(statuses())
     client.loop.create_task(dbl_updating())
     client.loop.create_task(monitoring())
+    client.loop.create_task(clear_cache())
     global top_servers
     top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
     #await client.change_presence(game=discord.Game(name='Помощь - !help'))
@@ -540,6 +588,7 @@ async def webhook(context, name: str=None, *, value: str=None):
 
 @client.command(pass_context=True, name="createvoice", help="Создать войс канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
 async def createvoice(context):
     await u_createvoice(client, conn, logger, context)
 
@@ -573,6 +622,12 @@ async def shop(context, page: int=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def lvlup(context, page: int=None):
     await o_lvlup(client, conn, context, page)
+
+@client.command(pass_context=True, name="synclvlup", help="Синхронизировать уровни участников и роли за уровень.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def synclvlup(context):
+    await o_synclvlup(client, conn, context)
 
 @client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -644,6 +699,11 @@ async def save_users(context):
 async def base(context, mes: str=None):
     await a_base(client, conn, context)
 
+@client.command(pass_context=True, name="verify", aliases=["v"], hidden=True)
+@is_it_me()
+async def verify(context, identify: str):
+    await u_verify(client, conn, context, identify)
+
 @client.command(pass_context=True, name="news", hidden=True, help="Сделать рассылку заданного сообщения.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
@@ -686,7 +746,7 @@ async def welcome(context):
 async def dele(context, who: discord.Member, role_id: str):
     message = context.message
     await client.delete_message(message)
-    await client.remove_role(who, discord.utils.get(message.server.roles, id=role_id))
+    await client.remove_roles(who, discord.utils.get(message.server.roles, id=role_id))
 
 @client.command(pass_context=True, name="invite_server", hidden=True, help="Создать инвайт на данный сервер.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -762,7 +822,6 @@ async def give(context, who: discord.Member, count: str):
 
 @client.command(pass_context=True, name="gift")
 @commands.cooldown(1, 1, commands.BucketType.user)
-@is_it_local_server()
 @is_it_owner()
 async def gift(context, count: int):
     await e_gift(client, conn, context, count)
@@ -832,15 +891,20 @@ async def kiss(context, who: discord.Member):
 async def drink(context):
     await f_drink(client, conn, context)
 
-@client.command(pass_context=True, name="shiki", help="Найти аниме на Shikimori.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def shiki(context, *, name: str):
-    await api_shiki(client, conn, logger, context, name)
+# @client.command(pass_context=True, name="shiki", help="Найти аниме на Shikimori.")
+# @commands.cooldown(1, 1, commands.BucketType.user)
+# async def shiki(context, *, name: str):
+#     await api_shiki(client, conn, logger, context, name)
 
 # @client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
 # @commands.cooldown(1, 1, commands.BucketType.user)
 # async def google_search(context, *, name: str):
 #     await api_google_search(client, conn, logger, context, name)
+
+@client.command(pass_context=True, name="guild", help="Гильдии.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def guild(context, category: str, arg1: str=None, *, args: str=None):
+    await g_guild(client, conn, context, category, arg1, args)
 
 @client.command(pass_context=True, name="br", aliases=["roll"], help="Поставить деньги на рулетке.")
 @commands.cooldown(1, 2, commands.BucketType.user)
@@ -875,7 +939,7 @@ async def avatar(context, who: discord.Member=None):
     await o_avatar(client, conn, context, who)
 
 @client.command(pass_context=True, name="me", aliases=["profile"], help="Вывести статистику пользователя картинкой.")
-@commands.cooldown(1, 15, commands.BucketType.user)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def me(context, who: discord.Member=None):
     await f_me(client, conn, context, who)
 
@@ -997,7 +1061,7 @@ async def giveaway(context, count: int=300, message: str="Розыгрыш!"):
 
 @client.event
 async def on_message(message):
-    if not message.channel.is_private and message.server.id in not_log_servers or message.server.id in konoha_servers:
+    if not message.channel.is_private and (message.server.id in not_log_servers or message.server.id in konoha_servers):
         return
     await u_check_support(client, conn, logger, message)
 
@@ -1026,7 +1090,7 @@ async def on_message(message):
         )
         await client.send_message(message.channel, embed=em)
 
-    if message.server.id in local_stats_servers:
+    if not serv["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -1059,6 +1123,12 @@ async def on_message(message):
 
     if message.content.startswith(serv["prefix"]) or message.content.startswith("!help"):
         await client.process_commands(message)
+
+        # if message.server.id == "409235467226185728":
+        #     command_name = message.content[len(serv["prefix"]):].split(" ")[0]
+        #     await client.send_message(message.channel, )
+        #     if command_name in list(moon_server.keys()):
+        #         await u_response_moon_server(client, serv, message, command_name)
 
 
 

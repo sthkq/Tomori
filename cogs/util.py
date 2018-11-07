@@ -36,7 +36,10 @@ mask = mask.resize((343, 343), Image.ANTIALIAS)
 
 
 global voice_clients
-voice_clients = []
+voice_clients = {}
+
+headers = {'authorization': "Bot "+settings["token"], 'Content-Type': 'application/json'}
+discord_api_url = "https://discordapp.com/api/v6"
 
 
 async def u_voice_state_update(client, conn, logger, before, after):
@@ -48,109 +51,130 @@ async def u_voice_state_update(client, conn, logger, before, after):
     logger.info(ret)
     if before.bot:
         return
-    const = await conn.fetchrow("SELECT create_lobby_id, em_color FROM settings WHERE discord_id = '{}'".format(before.server.id))
-    if not const:
-        logger.error('Сервер {0.name} | {0.id} отсутствует в базе! User - {1.name} | {1.id}\n'.format(before.server, before))
-        return
-    if not const[0]:
-        return
-    em = discord.Embed(colour=int(const[1], 16) + int("0x200", 16))
     global voice_clients
-    if before.voice.voice_channel and before.voice.voice_channel != after.voice.voice_channel:
-        if before.id in voice_clients:
-            voice_clients.pop(voice_clients.index(before.id))
-        dat = await conn.fetchrow("SELECT voice_channel_id FROM users WHERE discord_id = '{0.id}'".format(before))
-        if dat:
-            if before.voice.voice_channel.id == dat[0]:
-                await conn.execute("UPDATE users SET voice_channel_id = Null WHERE discord_id = '{0.id}'".format(before))
-                try:
-                    await client.delete_channel(before.voice.voice_channel)
-                except:
-                    logger.error('Сервер {0.name} | {0.id}. Не удалось удалить канал пользователя. User - {1.name} | {1.id}\n'.format(before.server, before))
-                    em.description = '{}, не удалось удалить канал пользователя. Свяжитесь с администратором сервера.'.format(clear_name(before.display_name[:50]))
-                    await client.send_message(before, embed=em)
-    if after.voice.voice_channel and after.voice.voice_channel.id == const[0]:
-        if before.id in voice_clients:
-            return
-        voice_clients.append(before.id)
-        try:
-            for_everyone = discord.ChannelPermissions(target=after.server.default_role, overwrite=discord.PermissionOverwrite(read_messages=True))
-            for_after = discord.ChannelPermissions(target=after, overwrite=discord.PermissionOverwrite(create_instant_invite=True, manage_roles=False, read_messages=True, manage_channels=True, connect=True, speak=True, mute_members=False, deafen_members=False, use_voice_activation=True, move_members=False))
-            private = await client.create_channel(after.server, "{name}".format(name=clear_name(after.display_name[:50])), for_everyone, for_after, type=discord.ChannelType.voice)
-            await client.edit_channel(private, user_limit=2)
-            await client.move_channel(private,  0)
-            dat = await conn.fetchrow("SELECT name FROM users WHERE discord_id = '{0.id}'".format(before))
-            if dat:
-                await conn.execute("UPDATE users SET voice_channel_id = '{0}' WHERE discord_id = '{1.id}'".format(private.id, before))
+    const = await get_cached_server(conn, before.server.id)
+    if not const:
+        logger.error("'const' doesn't exists((")
+        return
+    if before.voice.voice_channel:
+        if not after.voice.voice_channel and before.id in voice_clients.keys():
+            voice_time = int(time.time()) - voice_clients.pop(before.id, int(time.time()))
+            if not const["is_global"]:
+                stats_type = before.server.id
             else:
-                await conn.execute("INSERT INTO users(name, discord_id, discriminator, voice_channel_id, background) VALUES('{}', '{}', '{}', '{}')".format(before.name, before.id, before.discriminator, private.id, random.choice(background_list)))
-        except:
-            logger.error('Сервер {0.name} | {0.id}. Не удалось создать канал. User - {1.name} | {1.id}\n'.format(before.server, before))
-            em.description = '{}, не удалось создать канал. Свяжитесь с администратором сервера.'.format(clear_name(before.display_name[:50]))
-            await client.send_message(before, embed=em)
-            return
-        try:
-            await client.move_member(after, private)
-        except:
-            try:
-                await client.delete_channel(private)
-            except:
-                logger.error('Сервер {0.name} | {0.id}. Не удалось удалить канал {1.name} | {1.id}. User - {2.name} | {1.id}\n'.format(before.server, private, before))
-            logger.error('Сервер {0.name} | {0.id}. Не удалось переместить пользователя. User - {1.name} | {1.id}\n'.format(before.server, before))
-            em.description = '{}, не удалось переместить Вас в Ваш канал. Свяжитесь с администратором сервера.'.format(clear_name(before.display_name[:50]))
-            await client.send_message(before, embed=em)
-            return
+                stats_type = "global"
+            dat = await conn.fetchrow("UPDATE users SET voice_time = voice_time + {time} WHERE discord_id = '{id}' AND stats_type = '{stats_type}' RETURNING voice_time".format(
+                time=voice_time,
+                id=before.id,
+                stats_type=stats_type
+            ))
+            if dat:
+                voice_time = dat["voice_time"]
+                if not voice_time:
+                    voice_time = 0
+                await u_check_voice_time(client, conn, const, before, voice_time)
+        await check_empty_voice(client, conn, const, before.voice.voice_channel)
+    if after.voice.voice_channel:
+        if not before.id in voice_clients.keys():
+            voice_clients[before.id] = int(time.time())
+        if const["create_lobby_id"] and const["create_lobby_category_id"] and after.voice.voice_channel.id == const["create_lobby_id"]:
+            if await check_captcha(client, conn, const, after, after): #client.get_channel("484805058760933377")
+                payload = {
+                    "name": after.display_name,
+                    "type": 2,
+                    "user_limit": 10,
+                    "parent_id": const["create_lobby_category_id"],
+                    "permission_overwrites": [
+                        {
+                            "id": after.server.default_role.id,
+                            "type": "role",
+                            "allow": 36701184,
+                            "deny": 0
+                        },
+                        {
+                            "id": after.id,
+                            "type": "member",
+                            "allow": 334497041,
+                            "deny": 0
+                        }
+                    ]
+                }
+                response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=after.server.id), json=payload, headers=headers)
+                response = json.loads(response.text)
+                if response.get("id"):
+                    payload = {
+                        "channel_id": response.get("id")
+                    }
+                    requests.patch("{base}/guilds/{server}/members/{member}".format(base=discord_api_url, server=after.server.id, member=after.id), json=payload, headers=headers)
+
+
+
+
+
+async def check_empty_voice(client, conn, const, channel):
+    response = requests.get("{base}/channels/{channel}".format(base=discord_api_url, channel=channel.id), headers=headers)
+    response = json.loads(response.text)
+    if response.get("parent_id"):
+        if response.get("parent_id") == const["create_lobby_category_id"] and response.get("id") != const["create_lobby_id"] and len(channel.voice_members) == 0:
+            await client.delete_channel(channel)
+
+
 
 async def u_createvoice(client, conn, logger, context):
     message = context.message
     server_id = message.server.id
     who = message.author
-    const = await conn.fetchrow("SELECT em_color, is_createvoice, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[2]
-    if not const or not const[1]:
-        await send_command_error(message, lang)
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     try:
         await client.delete_message(message)
     except:
         pass
-    if not who.voice.voice_channel:
-        logger.error('Сервер {0.name} | {0.id}. Пользователь не в войсе. User - {1.name} | {1.id}\n'.format(who.server, who))
-        em.description = '{}, для начала зайдите в голосовой канал.'.format(clear_name(who.display_name[:50]))
-        await client.send_message(who, embed=em)
-        return
-    try:
-        private = await client.create_channel(who.server, "private - {}".format(clear_name(who.display_name[:50])), type=discord.ChannelType.voice)
-        await client.edit_channel_permissions(private, target=who.server.default_role, overwrite=discord.PermissionOverwrite(read_messages=False))
-        await client.edit_channel_permissions(private, target=who, overwrite=discord.PermissionOverwrite(create_instant_invite=True, manage_roles=True, read_messages=True, manage_channels=True, connect=True, speak=True, mute_members=True, deafen_members=True, use_voice_activation=True, move_members=True))
-        dat = await conn.fetchrow("SELECT name FROM users WHERE discord_id = '{0.id}'".format(who))
-        if dat:
-            await conn.execute("UPDATE users SET voice_channel_id = '{0}' WHERE discord_id = '{1.id}'".format(private.id, who))
-        else:
-            await conn.execute("INSERT INTO users(name, discord_id, discriminator, voice_channel_id, background) VALUES('{}', '{}', '{}', '{}')".format(who.name, who.id, who.discriminator, private.id, random.choice(background_list)))
-    except:
-        logger.error('Сервер {0.name} | {0.id}. Не удалось создать канал. User - {1.name} | {1.id}\n'.format(who.server, who))
-        em.description = '{}, не удалось создать канал. Свяжитесь с администратором сервера.'.format(clear_name(who.display_name[:50]))
-        await client.send_message(who, embed=em)
-        return
-    try:
-        await client.move_member(who, private)
-    except:
-        try:
-            await client.delete_channel(private)
-        except:
-            logger.error('Сервер {0.name} | {0.id}. Не удалось удалить канал {1.name} | {1.id}. User - {2.name} | {1.id}\n'.format(who.server, private, who))
-        logger.error('Сервер {0.name} | {0.id}. Не удалось переместить пользователя. User - {1.name} | {1.id}\n'.format(who.server, who))
-        em.description = '{}, не удалось переместить Вас в Ваш канал. Свяжитесь с администратором сервера.'.format(clear_name(who.display_name[:50]))
-        await client.send_message(who, embed=em)
-        return
+    payload = {
+        "name": "Tomori private voices",
+        "type": 4
+    }
+    response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=server_id), json=payload, headers=headers)
+    category_id = json.loads(response.text).get("id")
+    payload = {
+        "name": "Create voice [+]",
+        "type": 2,
+        "user_limit": 1,
+        "parent_id": category_id,
+        "permission_overwrites": [
+            {
+                "id": message.server.default_role.id,
+                "type": "role",
+                "allow": 36701184,
+                "deny": 0
+            }
+        ]
+    }
+    response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=server_id), json=payload, headers=headers)
+    lobby_id = json.loads(response.text).get("id")
+    await conn.execute("UPDATE settings SET create_lobby_id = '{lobby}', create_lobby_category_id = '{category}', is_createvoice = TRUE WHERE discord_id = '{server}'".format(
+        lobby=lobby_id,
+        category=category_id,
+        server=server_id
+    ))
 
 async def u_setvoice(client, conn, logger, context):
     message = context.message
     server_id = message.server.id
     who = message.author
-    const = await conn.fetchrow("SELECT em_color, is_createvoice, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const[2]
     if not const or not const[1]:
         await send_command_error(message, lang)
@@ -260,15 +284,21 @@ async def u_reaction_add(client, conn, logger, data):
     ))
     roles = []
     for role in user.roles:
-        if not any(role.id==dat["value"] for dat in data):
+        if not any(role.id==dat["value"] for dat in data) or any(dat["value"]=='not unique' for dat in data):
             roles.append(role)
+    is_new_role = False
     for react in data:
         if not react["condition"] == emoji['name']:
             continue
         role = discord.utils.get(server.roles, id=react["value"])
         if role and not role in roles:
+            is_new_role = True
             roles.append(role)
-    await client.replace_roles(user, *roles)
+    if is_new_role:
+        try:
+            await client.replace_roles(user, *roles)
+        except:
+            pass
 
 async def u_reaction_remove(client, conn, logger, data):
     emoji = data.get("emoji")
@@ -317,7 +347,6 @@ async def u_check_ddos(client, conn, logger, member):
     dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
     if dat:
         try:
-            #logger.error("================================================================================\n**{2}**\n({0.name} | {0.mention}) -> [{1.name} | {1.id}]\n".format(member, member.server, time.ctime(time.time())))
             try:
                 await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
                 await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
@@ -331,54 +360,7 @@ async def u_check_ddos(client, conn, logger, member):
         except:
             pass
             await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) != [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-            # await client.send_message(member.server.owner, "**{1}**\n``Не удалось кикнуть ({0.name} | {0.mention}) с твоего сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori((``".format(member, time.ctime(time.time())))
         return True
-    # if (datetime.utcnow() - member.created_at).days == 0:
-    #     dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
-    #     if dat:
-    #         if not dat[0]:
-    #             await conn.execute("UPDATE black_list SET name = '{0.name}' WHERE discord_id = '{0.id}'".format(member))
-    #     else:
-    #         await conn.execute("INSERT INTO black_list(name, discord_id) VALUES('{0.name}', '{0.id}')".format(member))
-    #     try:
-    #         await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) кикнут потому что сегодня создан акк [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #         await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
-    #         await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха [Cookie]#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
-    #         await client.kick(member)
-    #     except:
-    #         await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) не кикнут [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #     return True
-    # if len(member.game.name.lower()) >= 30:# or (datetime.utcnow() - member.created_at).days == 0:
-    #     dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
-    #     if dat:
-    #         if not dat[0]:
-    #             await conn.execute("UPDATE black_list SET name = '{0.name}' WHERE discord_id = '{0.id}'".format(member))
-    #     else:
-    #         await conn.execute("INSERT INTO black_list(name, discord_id) VALUES('{0.name}', '{0.id}')".format(member))
-    #     try:
-    #         await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) status> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #         await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
-    #         #await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха [Cookie]#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
-    #         await client.kick(member)
-    #     except:
-    #         await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) !status [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #     return True
-    # for compare in ddos_name_list:
-    #     if compare.lower() in member.name.lower():# or (datetime.utcnow() - member.created_at).days == 0:
-    #         dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(member.id))
-    #         if dat:
-    #             if not dat[0]:
-    #                 await conn.execute("UPDATE black_list SET name = '{0.name}' WHERE discord_id = '{0.id}'".format(member))
-    #         else:
-    #             await conn.execute("INSERT INTO black_list(name, discord_id) VALUES('{0.name}', '{0.id}')".format(member))
-    #         try:
-    #             await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) +> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #             await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
-    #             #await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха [Cookie]#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
-    #             await client.ban(member)
-    #         except:
-    #             await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) !- [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
-    #         return True
     return False
 
 
@@ -433,6 +415,28 @@ async def u_clone_roles(client, conn, context, server_id):
             )
         except:
             pass
+
+
+
+async def u_response_moon_server(client, const, message, command_name):
+    who = None
+    try:
+        arg1 = message.content.split(" ", maxsplit=1)[1]
+    except:
+        arg1 = None
+    if arg1:
+        who = discord.utils.get(message.server.members, name=arg1)
+        if not who:
+            arg1 = re.sub(r'[<@#&!>]+', '', arg1.lower())
+            who = discord.utils.get(message.server.members, id=arg1)
+    if moon_server.get(command_name).get("is_who") and not who:
+        await client.send_message(message.channel, "{who}, Ты не выбрал пользователя для этого действия(".format(who=message.mention))
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    em.description = moon_server.get(command_name).get("response").format(author=message.author.mention)
+    if who:
+        em.description = em.description.format(who=who.mention)
+        em.set_image(url=random.choice(moon_server.get(command_name).get("gifs")))
 
 
 
@@ -666,6 +670,29 @@ async def u_check_support(client, conn, logger, message):
 
 
 
+async def check_captcha(client, conn, const, channel, member):
+    captcha = random.choice(list(captcha_list.keys()))
+    lang = const["locale"]
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    em.description = locale[lang]["captcha_solve"].format(
+        who=member.display_name+"#"+member.discriminator,
+        text=captcha
+    )
+    await client.send_message(channel, embed=em)
+    msg = await client.wait_for_message(timeout=60, author=member)
+    if not msg or not msg.content or not msg.content.lower() == captcha_list.get(captcha):
+        em.description = locale[lang]["captcha_wrong_solution"].format(who=member.display_name+"#"+member.discriminator)
+        await client.send_message(channel, embed=em)
+        return False
+    else:
+        return True
+
+
+
+async def u_check_voice_time(client, conn, const, user, voice_time):
+    pass
+
+
 async def u_check_lvlup(client, conn, channel, who, const, xp):
     lang = const["locale"]
     if not lang in locale.keys():
@@ -695,7 +722,10 @@ async def u_check_lvlup(client, conn, channel, who, const, xp):
             roles.append(role)
     if is_new_role:
         em.description += locale[lang]["lvlup_continue"].format(role=roles_mention[:-2])
-        await client.replace_roles(who, *roles)
+        try:
+            await client.replace_roles(who, *roles)
+        except:
+            pass
     if not who.server.id in konoha_servers:
         em.set_image(url=lvlup_image_url)
     else:
@@ -742,14 +772,14 @@ async def send_welcome_pic(client, channel, user, const):
 
     text_name = u"{}".format(user.display_name+"#"+user.discriminator)
     name_size = 1
-    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
+    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
     while font_name.getsize(text_name)[0] < 500:
         name_size += 1
-        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
+        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
         if name_size == 36:
             break
     name_size -= 1
-    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.otf", name_size)
+    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
 
     ava_url = user.avatar_url
     if not ava_url:
@@ -761,18 +791,44 @@ async def send_welcome_pic(client, channel, user, const):
     back.paste(under, (0, 0), under)
     back.paste(avatar, (29, 29), avatar)
 
-    draw.text(
+
+    kernel = [
+        0, 1, 2, 1, 0,
+        1, 2, 4, 2, 1,
+        2, 4, 8, 4, 1,
+        1, 2, 4, 2, 1,
+        0, 1, 2, 1, 0
+    ]
+    kernelsum = sum(kernel)
+    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.5 * kernelsum)
+    halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
+    ImageDraw.Draw(halo).text(
+        (435, 120),
+        text_welcome,
+        (0, 0, 0),
+        font=font_welcome
+    )
+    ImageDraw.Draw(halo).text(
+        (435, 230),
+        text_name,
+        (0, 0, 0),
+        font=font_name
+    )
+    blurred_halo = halo.filter(myfilter)
+    ImageDraw.Draw(blurred_halo).text(
         (435, 120),
         text_welcome,
         (color[0], color[1], color[2]),
         font=font_welcome
     )
-    draw.text(
+    ImageDraw.Draw(blurred_halo).text(
         (435, 230),
         text_name,
         (color[0], color[1], color[2]),
         font=font_name
     )
+    back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
+    draw = ImageDraw.Draw(back)
 
     filename = 'cogs/stat/return/welcome/{}.png'.format(user.server.id+'_'+user.id)
     back.save(filename)
@@ -842,6 +898,61 @@ async def tomori_log_unban(client, server, member):
     c_ban.set_thumbnail(url=ava_url)
     c_ban.set_footer(text="ID: {0.id} • {1}".format(member, time.ctime(time.time())))
     await client.send_message(client.get_channel(tomori_event_channel), embed=c_ban)
+
+async def u_verify(client, conn, context, identify):
+    message = context.message
+    server_id = message.server.id
+    const = await get_cached_server(conn, server_id)
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    if not const:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    identify = clear_name(identify)
+    who = discord.utils.get(message.server.members, name=identify)
+    if not who:
+        identify = re.sub(r'[<@#&!>]+', '', identify.lower())
+        who = discord.utils.get(message.server.members, id=identify)
+    if not who:
+        em.description = locale[lang]["incorrect_argument"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            arg="user"
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'badges' AND name = '{member}'".format(member=who.id))
+    badges = ["verified"]
+    if dat:
+        for badge in dat["arguments"]:
+            if badge in badges_list:
+                badges.append(badge)
+        await conn.execute("UPDATE mods SET arguments=ARRAY['{args}'] WHERE type = 'badges' AND name = '{name}'".format(
+            name=who.id,
+            args="', '".join(badges)
+        ))
+    else:
+        await conn.execute("INSERT INTO mods(name, type, arguments) VALUES('{name}', 'badges', ARRAY['{args}'])".format(
+            name=who.id,
+            args="', '".join(badges)
+        ))
+    em.description = locale[lang]["user_verified"].format(name=who.display_name+"#"+who.discriminator)
+    try:
+        await client.send_message(who, embed=em)
+    except:
+        await client.send_message(message.channel, embed=em)
+    return
 
 # async def u_check_achievements(client, conn, const, message, key):
 #     lang = const["locale"]

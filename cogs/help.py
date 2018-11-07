@@ -10,6 +10,7 @@ import re
 import json
 import asyncpg
 from discord.ext import commands
+from cogs.const import *
 
 help_responses = {
     "english" : {
@@ -30,12 +31,12 @@ help_responses = {
             "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "timely" : {
-            "description" : "Get __money__ [500 every 12 hours]",
+            "description" : "Get __money__ [500 {money} every 12 hours]",
             "usage" : "`{prefix}timely`",
             "rights" : ""
         },
         "work" : {
-            "description" : "Go to a work [50 every 30 minutes]",
+            "description" : "Go to a work [50 {money} every 30 minutes]",
             "usage" : "`{prefix}work`",
             "rights" : ""
         },
@@ -80,7 +81,7 @@ help_responses = {
             "rights" : ""
         },
         "give" : {
-            "description" : "Give your money to somebody",
+            "description" : "Give your {money} to somebody",
             "usage" : "`{prefix}give <@who> <count>`",
             "rights" : ""
         },
@@ -102,13 +103,13 @@ help_responses = {
             "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__"
         },
         "backgrounds" : {
-            "description" : "Показать список фонов",
+            "description" : "Show a list of backgrounds",
             "usage" : "`{prefix}backgrounds [page]`",
             "aliases": "backs",
             "rights" : ""
         },
         "backs" : {
-            "description" : "Показать список фонов",
+            "description" : "Show a list of backgrounds",
             "usage" : "`{prefix}backgrounds [page]`",
             "aliases": "backs",
             "rights" : ""
@@ -119,37 +120,37 @@ help_responses = {
             "rights" : ""
         },
         "hug" : {
-            "description" : "Hug somebody [30 cookie]",
+            "description" : "Hug somebody [30 {money}]",
             "usage" : "`{prefix}hug <@who>`",
             "rights" : ""
         },
         "wink" : {
-            "description" : "Wink to somebody [20 cookie]",
+            "description" : "Wink to somebody [20 {money}]",
             "usage" : "`{prefix}wink <@who>`",
             "rights" : ""
         },
         "five" : {
-            "description" : "High-five somebody [5 cookie]",
+            "description" : "High-five somebody [5 {money}]",
             "usage" : "`{prefix}five <@who>`",
             "rights" : ""
         },
         "fuck" : {
-            "description" : "Fuck somebody [15 cookie]",
+            "description" : "Fuck somebody [15 {money}]",
             "usage" : "`{prefix}fuck <@who>`",
             "rights" : ""
         },
         "punch" : {
-            "description" : "Punch somebody [20 cookie]",
+            "description" : "Punch somebody [20 {money}]",
             "usage" : "`{prefix}punch <@who>`",
             "rights" : ""
         },
         "kiss" : {
-            "description" : "Kiss somebody [30 cookie]",
+            "description" : "Kiss somebody [30 {money}]",
             "usage" : "`{prefix}kiss <@who>`",
             "rights" : ""
         },
         "drink" : {
-            "description" : "Drink some alchogol [45 cookie]",
+            "description" : "Drink some alchogol [45 {money}]",
             "usage" : "`{prefix}drink <@who>`",
             "rights" : ""
         },
@@ -215,24 +216,31 @@ help_responses = {
             "rights" : ""
         },
         "clear" : {
-            "description" : "Удалить последние сообщения",
-            "usage" : "`{prefix}clear <кол-во>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "description" : "Remove <count> messages from channel",
+            "usage" : "`{prefix}clear <count`",
+            "aliases": "cl",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__ or __**Manage messages**__"
+        },
+        "cl" : {
+            "description" : "Remove <count> messages from channel",
+            "usage" : "`{prefix}clear <count`",
+            "aliases": "cl",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__ or __**Manage messages**__"
         },
         "kick" : {
-            "description" : "Кикнуть пользователя",
-            "usage" : "`{prefix}kick <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "description" : "Kick user",
+            "usage" : "`{prefix}kick <@who>`",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__ or __**Kick members**__"
         },
         "ban" : {
-            "description" : "Забанить пользователя",
-            "usage" : "`{prefix}ban <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "description" : "Ban user",
+            "usage" : "`{prefix}ban <@who>`",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__ or __**Ban members**__"
         },
         "unban" : {
-            "description" : "Разбабанить пользователя",
-            "usage" : "`{prefix}unban <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "description" : "Unban user",
+            "usage" : "`{prefix}unban <@who>`",
+            "rights" : "\n\n**Rights:**\nNeed permissions __**Administrator**__ or __**Ban members**__"
         }
     },
     "russian" : {
@@ -252,12 +260,12 @@ help_responses = {
             "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
         "timely" : {
-            "description" : "Cобрать валюту [500 каждые 12 часов]",
+            "description" : "Cобрать валюту [500 {money} каждые 12 часов]",
             "usage" : "`{prefix}timely` - получить ежедневную выплату",
             "rights" : ""
         },
         "work" : {
-            "description" : "Выйти на работу [50 каждые 30 минут]",
+            "description" : "Выйти на работу [50 {money} каждые 30 минут]",
             "usage" : "`{prefix}work`",
             "rights" : ""
         },
@@ -282,7 +290,7 @@ help_responses = {
             "rights" : ""
         },
         "pay" : {
-            "description" : "Получить __печенюхи__ из банка сервера",
+            "description" : "Получить {money} из банка сервера",
             "usage" : "`{prefix}pay <кол-во>`",
             "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__"
         },
@@ -302,7 +310,7 @@ help_responses = {
             "rights" : ""
         },
         "give" : {
-            "description" : "Передать свои печенюхи",
+            "description" : "Передать свои {money}",
             "usage" : "`{prefix}give <@кто> <кол-во>`",
             "rights" : ""
         },
@@ -341,37 +349,37 @@ help_responses = {
             "rights" : ""
         },
         "hug" : {
-            "description" : "Обнять [30 печенюх]",
+            "description" : "Обнять [30 {money}]",
             "usage" : "`{prefix}hug <@кто>`",
             "rights" : ""
         },
         "wink" : {
-            "description" : "Подмигнуть [20 печенюх]",
+            "description" : "Подмигнуть [20 {money}]",
             "usage" : "`{prefix}wink <@кто>`",
             "rights" : ""
         },
         "five" : {
-            "description" : "Дать пять [5 печенюх]",
+            "description" : "Дать пять [5 {money}]",
             "usage" : "`{prefix}five <@кто>`",
             "rights" : ""
         },
         "fuck" : {
-            "description" : "Показать фак [15 печенюх]",
+            "description" : "Показать фак [15 {money}]",
             "usage" : "`{prefix}fuck <@кто>`",
             "rights" : ""
         },
         "punch" : {
-            "description" : "Дать леща [20 печенюх]",
+            "description" : "Дать леща [20 {money}]",
             "usage" : "`{prefix}punch <@кто>`",
             "rights" : ""
         },
         "kiss" : {
-            "description" : "Поцеловать [30 печенюх]",
+            "description" : "Поцеловать [30 {money}]",
             "usage" : "`{prefix}kiss <@кто>`",
             "rights" : ""
         },
         "drink" : {
-            "description" : "Уйти в запой [45 печенюх]",
+            "description" : "Уйти в запой [45 {money}]",
             "usage" : "`{prefix}drink <@кто>`",
             "rights" : ""
         },
@@ -381,25 +389,25 @@ help_responses = {
             "rights" : ""
         },
         "br" : {
-            "description" : "Поставить деньги на рулетке",
+            "description" : "Поставить {money} на рулетке",
             "usage" : "`{prefix}br <ставка>`",
             "aliases": "roll",
             "rights" : ""
         },
         "roll" : {
-            "description" : "Поставить деньги на рулетке",
+            "description" : "Поставить {money} на рулетке",
             "usage" : "`{prefix}br <ставка>`",
             "aliases": "roll",
             "rights" : ""
         },
         "slots" : {
-            "description" : "Поставить деньги на рулетке",
+            "description" : "Поставить {money} на рулетке",
             "usage" : "`{prefix}slots <ставка>`",
             "aliases": "slot",
             "rights" : ""
         },
         "slot" : {
-            "description" : "Поставить деньги на рулетке",
+            "description" : "Поставить {money} на рулетке",
             "usage" : "`{prefix}slots <ставка>`",
             "aliases": "slot",
             "rights" : ""
@@ -417,6 +425,7 @@ help_responses = {
         "me" : {
             "description" : "Показать профиль пользователя",
             "usage" : "`{prefix}me <@кто>`",
+            "aliases": "profile",
             "rights" : ""
         },
         "about" : {
@@ -432,22 +441,69 @@ help_responses = {
         "clear" : {
             "description" : "Удалить последние сообщения",
             "usage" : "`{prefix}clear <кол-во>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "aliases": "cl",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Управление сообщениями**__"
+        },
+        "cl" : {
+            "description" : "Удалить последние сообщения",
+            "usage" : "`{prefix}clear <кол-во>`",
+            "aliases": "cl",
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Управление сообщениями**__"
         },
         "kick" : {
             "description" : "Кикнуть пользователя",
             "usage" : "`{prefix}kick <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Выгнать участников**__"
         },
         "ban" : {
             "description" : "Забанить пользователя",
             "usage" : "`{prefix}ban <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Банить участников**__"
         },
         "unban" : {
-            "description" : "Разбабанить пользователя",
+            "description" : "Разбанить пользователя",
             "usage" : "`{prefix}unban <@кто>`",
-            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Модератор**__"
+            "rights" : "\n\n**Rights:**\nНужны права __**Администратор**__ или __**Банить участников**__"
+        },
+        "guild create" : {
+            "description" : "Создать гильдию [{guild_price} {money}]",
+            "usage" : "`{prefix}guild create <имя>`",
+            "rights" : ""
+        },
+        "guild delete" : {
+            "description" : "Удалить гильдию",
+            "usage" : "`{prefix}guild delete`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Владелец гильдии**__"
+        },
+        "guild info" : {
+            "description" : "Показать профиль гильдии",
+            "usage" : "`{prefix}guild info\n{prefix}guild info <@кто>`",
+            "rights" : ""
+        },
+        "guild join" : {
+            "description" : "Вступить в гильдию",
+            "usage" : "`{prefix}guild join <имя>`",
+            "rights" : ""
+        },
+        "guild list" : {
+            "description" : "Показать заявки в гильдию",
+            "usage" : "`{prefix}guild list <страница>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Владелец гильдии**__"
+        },
+        "guild accept" : {
+            "description" : "Принять заявки в гильдию",
+            "usage" : "`{prefix}guild accept <имя|id|линк|номер в списке|all>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Владелец гильдии**__"
+        },
+        "guild cancel" : {
+            "description" : "Отклонить заявки в гильдию (для владельца) или отменить заявку в гильдию (для участника)",
+            "usage" : "`{prefix}guild cancel\n{prefix}guild cancel <имя|id|линк|номер в списке|all>`",
+            "rights" : "\n\n**Rights:**\nНужны права __**Владелец гильдии**__ для отмены заявок в свою гильдию"
+        },
+        "guild leave" : {
+            "description" : "Выйти из гильдии",
+            "usage" : "`{prefix}guild leave`",
+            "rights" : ""
         }
     }
 }
@@ -482,11 +538,11 @@ async def h_check_help(client, conn, message):
     formatted_message = message.content.split(" ", maxsplit=1)
     command = formatted_message[1]
 
-    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"] if const["locale"] in help_responses.keys() else "english" #Проверка на наличие языка в словаре, иначе Английский
     prefix = const["prefix"]
 
-    em = discord.Embed(color = 0xC5934B)
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     em.title = help_responses[lang]["command"].format(command=command)
     em.set_footer(text="{name}#{discriminator}".format(
         name=message.author.name,
@@ -503,17 +559,28 @@ async def h_check_help(client, conn, message):
         await client.send_message(message.channel, embed=em)
         return
 
-    aliases = help_responses[lang][command].get("aliases")
-    if not aliases:
+    try:
+        aliases = help_responses[lang][command].get("aliases")
+        if not aliases:
+            aliases = ""
+        else:
+            aliases = "\n**Aliaces:**\n`" + aliases + "`"
+    except:
         aliases = ""
-    else:
-        aliases = "\n**Aliaces:**\n`" + aliases + "`"
 
     if command in help_responses[lang].keys():
         em.description = "{desc}\n\n{usage}{aliases}{rights}".format(
-            desc=help_responses[lang][command]["description"],
+            desc=help_responses[lang][command]["description"].format(
+                prefix=prefix,
+                guild_price=const["guild_price"],
+                money=const["server_money"]
+            ),
             usage=help_responses[lang]["usage"] + \
-                help_responses[lang][command]["usage"].format(prefix=prefix),
+                help_responses[lang][command]["usage"].format(
+                    prefix=prefix,
+                    guild_price=const["guild_price"],
+                    money=const["server_money"]
+                ),
             #Складываем "Usage:" и примеры использования
             aliases=aliases,
             rights=help_responses[lang][command]["rights"]

@@ -279,8 +279,8 @@ async def a_clear(client, conn, context, count, who):
 async def a_take(client, conn, context, who, count):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, is_take, server_money, locale FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const[3]
+    const = await get_cached_server(conn, server_id)
+    lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
             who=message.author.display_name+"#"+message.author.discriminator,
@@ -288,8 +288,8 @@ async def a_take(client, conn, context, who, count):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
-    if not const or not const[1]:
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_take"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -297,7 +297,6 @@ async def a_take(client, conn, context, who, count):
         await client.delete_message(message)
     except:
         pass
-    em = discord.Embed(colour=int(const[0], 16) + int("0x200", 16))
     if not who:
         em.description =locale[lang]["global_not_display_name_on_user"].format(clear_name(message.author.display_name+"#"+message.author.discriminator)) #{}, введенное значение не является ссылкой на пользователя
         await client.send_message(message.channel, embed=em)
@@ -313,7 +312,7 @@ async def a_take(client, conn, context, who, count):
         em.description =locale[lang]["global_not_number"].format(clear_name(message.author.display_name+"#"+message.author.discriminator)) #{}, введенное значение не является числом.
         await client.send_message(message.channel, embed=em)
         return
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"

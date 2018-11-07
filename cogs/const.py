@@ -3,6 +3,100 @@ import asyncio
 import re
 import logging
 import json
+import random
+from PIL import Image, ImageChops, ImageFont, ImageDraw, ImageSequence, ImageFilter
+from PIL.GifImagePlugin import getheader, getdata
+from functools import partial
+import aiohttp
+from io import BytesIO
+from typing import Union
+
+
+moon_server = {
+"злиться":{
+    "response":"{author} злиться на {who}. Хм... что же он(а) такого сделал(а)?",
+    "is_who": True,
+    "gifs":[
+            "https://cdn.discordapp.com/attachments/504948339809320960/506771700759658516/baka2.gif",
+            "https://cdn.discordapp.com/attachments/504948339809320960/506771698864095262/baka1.gif",
+            "https://cdn.discordapp.com/attachments/504948339809320960/506771703129440256/baka3.gif"
+    ]
+},
+"грустить":{
+    "response":"Милый котик {author} грустит...",
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772539507212288/sad1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772544414547968/sad2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772566032121858/sad4.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772577834762250/sad5.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772582272335882/sad6.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506772597401321472/sad7.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773144237768714/tumblr_ou87z3uTEv1wuhq9yo1_500.gif"
+    ]
+},
+"секс":{
+    "response":"{author} Хочет заняться сексом с {who}. Сейчас будет жарко.",
+    "is_who": True,
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773551991488522/sex1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773548870926337/sex_1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773562288504833/sex2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773569892646912/sex3.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773575135657984/sex4.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773585491394570/sex6.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773594529857537/sex7.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506773599877726215/sex8.gif"
+    ]
+},
+"суицид":{
+    "response":"{author} ушёл(a) в мир иной... прощай, мы будем скучать.",
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774310107611136/suicide1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774311743520776/suicide2.gif"
+    ]
+},
+"гладить":{
+    "response":"{author} гладит {who}. Это так мило ^^",
+    "is_who": True,
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774656842465300/1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774662957498389/3.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774662231883787/2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506774668913541135/5.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506775581271261184/4.gif"
+    ]
+},
+"смущаюсь":{
+    "response":"{author} ooow, Меня засмущали :с",
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506775708492890112/3.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506775700842348544/2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506775695263924224/1.gif"
+    ]
+},
+"кусь":{
+    "response":"Кусь! {author} укусил(a) {who}.",
+    "is_who": True,
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506776383175786506/2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506776387022225408/1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506776393162686465/3.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506776398489190400/4.gif"
+    ]
+},
+"обнять":{
+    "response":"{author} обнял(а) {who}. Это так романтично",
+    "is_who": True,
+    "gifs":[
+        "https://cdn.discordapp.com/attachments/504948339809320960/506777002309582863/1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506777067539398656/1.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506777070899298316/2.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506777079975510016/3.gif",
+        "https://cdn.discordapp.com/attachments/504948339809320960/506777090629304340/4.gif"
+    ]
+}
+}
+
 
 
 punch_list = ['https://media.giphy.com/media/1n753Z1ZeGdkwxtYHo/giphy.gif',
@@ -21,18 +115,11 @@ drink_list = ['https://media.giphy.com/media/1xlqPePKvCM3xVkWet/giphy.gif',
 		      'https://media.giphy.com/media/NSqNZRkKShyKtedi0c/giphy.gif',
 		      'https://media.giphy.com/media/1BfhcYJtmPsM81JaRR/giphy.gif']
 
-sex_list = ['https://media.giphy.com/media/35FN4lauHp6Rp8Hmbe/giphy.gif',
-			'https://media.giphy.com/media/oHwzR1oBPH01N5dGb3/giphy.gif',
-			'https://media.giphy.com/media/l9VRIWKUKoE1CVifCc/giphy.gif',
-			'https://media.giphy.com/media/1wnYxMQDL1EaMkmvX8/giphy.gif',
-			'https://media.giphy.com/media/13b21X2VrjoH2eEvTp/giphy.gif',
-			'https://media.giphy.com/media/RcS3c2vgzuOvGlk2Ms/giphy.gif']
-
 hug_list = [
 "https://media.giphy.com/media/EvYHHSntaIl5m/giphy.gif",
 "https://media.giphy.com/media/lXiRKBj0SAA0EWvbG/giphy.gif",
 "https://media.giphy.com/media/xT0Gqne4C3IxaBcOdy/giphy.gif",
-"https://media.giphy.com/media/gnXG2hODaCOru/giphy.gif",
+#"https://media.giphy.com/media/gnXG2hODaCOru/giphy.gif",
 "https://media.giphy.com/media/VGACXbkf0AeGs/giphy.gif",
 "https://media.giphy.com/media/l378uBCYt1vfaj2aA/giphy.gif",
 "https://media.giphy.com/media/26FeTvBUZErLbTonS/giphy.gif",
@@ -93,11 +180,13 @@ hug_list = [
 "https://media.giphy.com/media/DjczAlIcyK1Co/giphy.gif"
 ]
 
-sex_list = ['https://discord.band/gif/1.gif',
-			'https://discord.band/gif/2.gif',
-			'https://discord.band/gif/3.gif',
-			'https://discord.band/gif/5.gif',
-			'https://discord.band/gif/6.gif']
+sex_list = [
+'https://discord.band/gif/1.gif',
+'https://discord.band/gif/2.gif',
+'https://discord.band/gif/3.gif',
+'https://discord.band/gif/5.gif',
+'https://discord.band/gif/6.gif'
+]
 
 kiss_list = [
 #"https://media.giphy.com/media/KMuPz4KDkJuBq/giphy.gif",
@@ -368,7 +457,7 @@ konoha_background_name_list = [
 
 lang_filter = {
     "475425777215864833": {
-        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'’\";:][\{\}/?.«»₽> ,<–ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
+        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'’\"•√π÷×¶∆£€₽¢^°∆%©®™✓;:][\{\}/?.«»₽> ,<–⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ№ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
         "report_channel": "484805775034810378"
     }
 }
@@ -403,6 +492,43 @@ async def check_words(client, message):
 # achievements = [
 #
 # ]
+
+
+
+badges_obj = {
+"staff": Image.open("cogs/stat/badges/staff.png"),
+"partner": Image.open("cogs/stat/badges/partner.png"),
+"hypesquad": Image.open("cogs/stat/badges/hypesquad.png"),
+"bug_hunter": Image.open("cogs/stat/badges/bug_hunter.png"),
+"nitro": Image.open("cogs/stat/badges/nitro.png"),
+"early": Image.open("cogs/stat/badges/early.png"),
+"verified": Image.open("cogs/stat/badges/verified.png")
+}
+
+badges_list = [
+"staff",
+"partner",
+"hypesquad",
+"bug_hunter",
+"nitro",
+"early",
+"verified"
+]
+
+global cached_servers
+cached_servers = {}
+
+async def clear_cache():
+    global cached_servers
+    cached_servers = {}
+    await asyncio.sleep(600)
+
+
+async def get_cached_server(conn, id):
+    global cached_servers
+    if not id in cached_servers.keys():
+        cached_servers[id] = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=id))
+    return cached_servers.get(id)
 
 
 
@@ -520,66 +646,6 @@ default_color = 0xC5934B
 success_color = 0x00ff08
 error_color = 0xff3838
 
-reaction_mes_ids = ["482646036116930560"]
-
-emoji_zverolud_id = "481379601642160132"
-emoji_nolife_id = "481379280433971220"
-emoji_avanturist_id = "470944111697068032"
-
-reaction_zverolud_ids = [
-	"477367163980611595",
-	"476748304844193792",
-	"476723872117293057",
-	"476723872000114689",
-	"476723866358513665",
-	"476723868825026560",
-	"465254757867454474",
-	"465254757531910145",
-	"472795129917210654",
-	"472795130521190410",
-	"480372045226573825",
-	"477368446384996362",
-	"465254756357767168",
-	"476728329446359061",
-	"480810858965106719"
-]
-
-reaction_nolife_ids = [
-	"477367163980611595",
-	"476748304844193792",
-	"476723872117293057",
-	"476723872000114689",
-	"476723866358513665",
-	"476723868825026560",
-	"465254757867454474",
-	"465254757531910145",
-	"472795129917210654",
-	"472795130521190410",
-	"480372039555743747",
-	"477368446384996362",
-	"465254756357767168",
-	"476728329446359061",
-	"476723866031357952"
-]
-
-reaction_avanturist_ids = [
-	"477367163980611595",
-	"476748304844193792",
-	"476723872117293057",
-	"476723872000114689",
-	"476723866358513665",
-	"476723868825026560",
-	"465254757867454474",
-	"465254757531910145",
-	"472795129917210654",
-	"472795130521190410",
-	"480372035319758873",
-	"477368446384996362",
-	"465254756357767168",
-	"476728329446359061",
-	"465568335904505886"
-]
-
 
 BR_MAX_BET = 10000
 SLOTS_MAX_BET = 5000
@@ -595,9 +661,9 @@ log_join_leave_server_id = "480689184814792704"
 admin_server_id = "327029562535968768"
 
 #             Ананасовая Печенюха         Unknown                Teris                Oddy38
-admin_list = ['501869445531041792', '499937748862500864', '281037696225247233', '476626134432481281', '500943025640439819']
+admin_list = ['501869445531041792', '499937748862500864', '281037696225247233', '496569904527441921', '500943025640439819']
 #               Ананасовая Печенюха         Unknown                Teris                Oddy38              mankidelufi              _Nier                RusTNT
-support_list = ['501869445531041792', '499937748862500864', '281037696225247233', '476626134432481281', '342557917121347585', '236426208315834369', '258156175730802688', '500943025640439819']
+support_list = ['501869445531041792', '499937748862500864', '281037696225247233', '496569904527441921', '342557917121347585', '236426208315834369', '258156175730802688', '500943025640439819']
 
 nazarik_id = "465616048050143232"
 nazarik_log_id = "480692089332695040"
@@ -609,13 +675,13 @@ uptimes = 0
 global top_servers
 top_servers = []
 
-# tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for Tomori") \
-# [Patreon](https://www.patreon.com/tomori_discord "Donate") \
-# [YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Tomori Project\'s channel") \
-# [Telegram](https://t.me/TomoriDiscord "Our telegram channel") \
-# [Website](https://discord.band "Our website") \
-# [VK](https://vk.com/tomori_discord "Our group on vk.com")'
-tomori_links = '[Join Konoha](https://discord.gg/PErt9KY "Join anime Naruto")'
+tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for Tomori") \
+[Patreon](https://www.patreon.com/tomori_discord "Donate") \
+[YouTube](https://www.youtube.com/channel/UCxqg3WZws6KxftnC-MdrIpw "Tomori Project\'s channel") \
+[Telegram](https://t.me/TomoriDiscord "Our telegram channel") \
+[Website](https://discord.band "Our website") \
+[VK](https://vk.com/tomori_discord "Our group on vk.com")'
+# tomori_links = '[Join Konoha](https://discord.gg/PErt9KY "Join anime Naruto")'
 
 def clear_name(name):
 	return re.sub(r'[\';"\\]+', '', name)
@@ -731,6 +797,39 @@ async def dict_to_embed(ret):
 
 
 
+errors = {
+	"user_in_not_exists_guild": "Guild Error 404",
+    "guild_remove_not_exists": "Guild Error 500",
+	"guild_info_not_exists": "Guild Error 403",
+    "guild_join_member_not_exists": "Guild Error 99",
+	"guild_accept_bad_response": "Guild Error 69"
+}
+
+
+
+
+captcha_list = {
+    "ȚÖMÖŖÏ": "tomori",
+    "•´¯`•. t๏๓๏гเ .•´¯`•": "tomori",
+    "ŤỖϻỖŘĮ": "tomori",
+    "ČỖỖЌĮẸ": "cookie",
+    "cooĸιe": "cookie",
+    "ȼ๏๏Ќɨ€": "cookie",
+    "𝕿𝖔𝖒𝖔𝖗𝖎": "tomori",
+    "🌴⚽〽️⚽🌱🎐": "tomori",
+    "🆃🅾🅼🅾🆁🅸": "tomori",
+    "ᗫᓿSᑤᓎᖇᗫ": "discord",
+    "ÐɪらㄈØ尺Ð": "discord",
+    "ⓓⓘⓢⓒⓞⓡⓓ": "discord",
+    "𝓭𝓲𝓼𝓬𝓸𝓻𝓭": "discord",
+    "𝖓𝖎𝖈𝖊 𝖈𝖆𝖕𝖙𝖈𝖍𝖆": "nice captcha",
+    "ᑎIᑕE ᑕᗩᑭTᑕᕼᗩ": "nice captcha",
+    "ɴɪᴄᴇ ᴄᴀᴘᴛᴄʜᴀ": "nice captcha",
+    "𝕀 𝕙𝕒𝕥𝕖 𝕪𝕠𝕦": "i hate you",
+    "𝕴 𝖍𝖆𝖙𝖊 𝖞𝖔𝖚": "i hate you",
+    "𝓘 𝓱𝓪𝓽𝓮 𝔂𝓸𝓾": "i hate you",
+    "𝙄 𝙝𝙖𝙩𝙚 𝙮𝙤𝙪": "i hate you"
+}
 
 
 

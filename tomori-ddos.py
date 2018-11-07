@@ -18,7 +18,7 @@ from cogs.const import *
 
 
 __name__ = "Tomori-ddos"
-__version__ = "3.15.0"
+__version__ = "3.15.1"
 
 
 
@@ -162,7 +162,7 @@ async def on_member_join(member):
         try:
             await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
             await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
-            await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха#0001 (<@>282660110545846272)``".format(member, time.ctime(time.time())))
+            await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха#0956 (<@501869445531041792>)``".format(member, time.ctime(time.time())))
         except:
             pass
         try:
@@ -201,7 +201,7 @@ async def on_ready():
     #client.loop.create_task(ddosing())
     client.loop.create_task(kicking())
     await client.change_presence(game=discord.Game(type=3, name="DDOS-protection"))
-    await client.send_message(client.get_server(log_join_leave_server_id).get_member("432879426066317322"), "DDOS-protection acquired.")
+    await client.send_message(client.get_server(log_join_leave_server_id).get_member("501869445531041792"), "DDOS-protection acquired.")
 
 
 @client.command(pass_context=True, name="get_bans", hidden=True, help="Перенести забаненных юзеров в черный список.")

@@ -18,12 +18,12 @@ from cogs.locale import *
 async def e_timely(client, conn, context):
     message = context.message
     server_id = message.server.id
-    if message.server.id in local_stats_servers:
+    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
     dat = await conn.fetchrow("SELECT cash, daily_time FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{discord_id}'".format(stats_type=stats_type, discord_id=message.author.id))
-    const = await conn.fetchrow("SELECT server_money, daily_count, daily_cooldown, em_color, is_timely, locale, likes FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -72,23 +72,28 @@ async def e_timely(client, conn, context):
                 )
             await client.send_message(message.channel, embed=em)
         else:
-            await conn.execute("UPDATE users SET cash = {cash}, daily_time = {time} WHERE stats_type = '{stats_type}' AND discord_id = '{discord_id}'".format(stats_type=stats_type, cash=dat["cash"] + count, time=int(time.time()), discord_id=message.author.id))
-            em.description = locale[lang]["economy_received_money"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const[0])
+            await conn.execute("UPDATE users SET cash = {cash}, daily_time = {time} WHERE stats_type = '{stats_type}' AND discord_id = '{discord_id}'".format(
+                stats_type=stats_type,
+                cash=dat["cash"] + count,
+                time=int(time.time()),
+                discord_id=message.author.id
+            ))
+            em.description = locale[lang]["economy_received_money"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const["server_money"])
             await client.send_message(message.channel, embed=em)
     else:
         await conn.execute("INSERT INTO users(name, discord_id, cash, daily_time, stats_type) VALUES('{}', '{}', {}, {}, '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, count, int(time.time()), stats_type))
-        em.description = locale[lang]["economy_received_money"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const[0])
+        em.description = locale[lang]["economy_received_money"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const["server_money"])
         await client.send_message(message.channel, embed=em)
     return
 
 async def e_give(client, conn, context, who, count):
     message = context.message
     server_id = message.server.id
-    if message.server.id in local_stats_servers:
+    const = await get_cached_server(conn, server_id)
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
-    const = await conn.fetchrow("SELECT server_money, server_money_name_net, em_color, is_give, locale FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -139,7 +144,7 @@ async def e_give(client, conn, context, who, count):
         if count == 'all':
             cooks = dat["cash"]
         elif dat["cash"] < int(count):
-            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[1])
+            em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
             if not message.server.id in servers_without_follow_us:
                 em.add_field(
                     name=locale[lang]["global_follow_us"],
@@ -160,10 +165,10 @@ async def e_give(client, conn, context, who, count):
             stats_type=stats_type,
             id=who.id
         ))
-        em.description = locale[lang]["economy_give"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), cooks, const[0], clear_name(who.display_name[:50]))
+        em.description = locale[lang]["economy_give"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), cooks, const["server_money"], clear_name(who.display_name[:50]))
     else:
         await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
-        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const[1])
+        em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
         if not message.server.id in servers_without_follow_us:
             em.add_field(
                 name=locale[lang]["global_follow_us"],
@@ -176,11 +181,11 @@ async def e_give(client, conn, context, who, count):
 async def e_gift(client, conn, context, count):
     message = context.message
     server_id = message.server.id
-    if message.server.id in local_stats_servers:
+    const = await get_cached_server(conn, server_id)
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
-    const = await conn.fetchrow("SELECT server_money, em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -190,7 +195,7 @@ async def e_gift(client, conn, context, count):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    if not const or not server_id in local_stats_servers:
+    if not const or const["is_global"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -221,7 +226,7 @@ async def e_gift(client, conn, context, count):
 async def e_cash(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, em_color, is_cash, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -239,7 +244,7 @@ async def e_cash(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -248,14 +253,14 @@ async def e_cash(client, conn, context):
         count = dat["cash"]
     else:
         count = 0
-    em.description = locale[lang]["economy_user_have"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const[0])
+    em.description = locale[lang]["economy_user_have"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), count, const["server_money"])
     await client.send_message(message.channel, embed=em)
     return
 
 async def e_work(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, is_work, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -273,7 +278,7 @@ async def e_work(client, conn, context):
         await client.delete_message(message)
     except:
         pass
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -305,7 +310,7 @@ async def e_work(client, conn, context):
 async def e_br(client, conn, context, count):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, em_color, is_br, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -332,7 +337,7 @@ async def e_br(client, conn, context, count):
         await client.send_message(message.channel, embed=em)
         return
     count = count[:20]
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -370,7 +375,7 @@ async def e_br(client, conn, context, count):
                 stats_type=stats_type,
                 id=message.author.id
             ))
-            em.description = locale[lang]["economy_you_win"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), summ, const[0])
+            em.description = locale[lang]["economy_you_win"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), summ, const["server_money"])
             await client.send_message(message.channel, embed=em)
         else:
             await conn.execute("UPDATE users SET cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
@@ -378,7 +383,7 @@ async def e_br(client, conn, context, count):
                 stats_type=stats_type,
                 id=message.author.id
             ))
-            em.description = locale[lang]["economy_you_lose"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), summ, const[0])
+            em.description = locale[lang]["economy_you_lose"].format(clear_name(message.author.display_name+"#"+message.author.discriminator), summ, const["server_money"])
             await client.send_message(message.channel, embed=em)
     else:
         await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
@@ -395,7 +400,7 @@ async def e_br(client, conn, context, count):
 async def e_slots(client, conn, context, count):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, em_color, is_slots, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -422,7 +427,7 @@ async def e_slots(client, conn, context, count):
         await client.send_message(message.channel, embed=em)
         return
     count = count[:20]
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -526,7 +531,7 @@ async def e_slots(client, conn, context, count):
 async def e_buy(client, conn, context, value):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, bank FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -563,7 +568,7 @@ async def e_buy(client, conn, context, value):
         )
         await client.send_message(message.channel, embed=em)
         return
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
@@ -572,7 +577,7 @@ async def e_buy(client, conn, context, value):
         user = await conn.fetchrow("SELECT cash FROM users WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(stats_type=stats_type, id=message.author.id))
         if user:
             if int(dat["condition"]) > user["cash"]:
-                em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["cash"])
+                em.description = locale[lang]["global_dont_have_that_much_money"].format(who=message.author.display_name+"#"+message.author.discriminator, money=const["server_money"])
                 if not message.server.id in servers_without_follow_us:
                     em.add_field(
                         name=locale[lang]["global_follow_us"],
@@ -619,7 +624,7 @@ async def e_buy(client, conn, context, value):
 async def e_shop(client, conn, context, page):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -671,7 +676,7 @@ async def e_shop(client, conn, context, page):
 async def e_pay(client, conn, context, count):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, bank, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -702,7 +707,7 @@ async def e_pay(client, conn, context, count):
         await client.delete_message(message)
     except:
         pass
-    if message.server.id in local_stats_servers:
+    if not const["is_global"]:
         stats_type = message.server.id
     else:
         stats_type = "global"
