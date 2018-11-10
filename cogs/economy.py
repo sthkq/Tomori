@@ -601,6 +601,7 @@ async def e_buy(client, conn, context, value):
                 ))
                 if int(dat["condition"]) > 0:
                     await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] + int(dat["condition"]), id=message.server.id))
+                    pop_cached_server(server_id)
                 em.description = locale[lang]["economy_role_response"].format(
                     who=message.author.mention,
                     role=role.mention
@@ -728,6 +729,7 @@ async def e_pay(client, conn, context, count):
                 id=message.author.id
             ))
             await conn.execute("UPDATE settings SET bank = {bank} WHERE discord_id = '{id}'".format(bank=const["bank"] - count, id=message.server.id))
+            pop_cached_server(server_id)
             em.description = locale[lang]["economy_pay_response"].format(
                 who=message.author.mention,
                 count=count,

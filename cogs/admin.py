@@ -52,6 +52,7 @@ async def a_enable(client, conn, context):
         "is_marry = True, " +
         "is_createvoice = True " +
         "WHERE discord_id = '{}'".format(server_id))
+    pop_cached_server(server_id)
     await client.send_message(message.author, "Сервер '{} | {}' активирован.".format(message.server.name, message.server.id))
     return
 
@@ -92,6 +93,7 @@ async def a_disable(client, conn, context):
         "is_marry = False, " +
         "is_createvoice = False " +
         "WHERE discord_id = '{}'".format(server_id))
+    pop_cached_server(server_id)
     await client.send_message(message.author, "Сервер '{} | {}' деактивирован.".format(message.server.name, message.server.id))
     return
 

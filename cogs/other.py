@@ -278,6 +278,7 @@ async def o_like(client, conn, context):
             like_time=now,
             discord_id=server_id
         ))
+        pop_cached_server(server_id)
         global top_servers
         top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
         em.description = locale[lang]["other_like_success"].format(who=message.author.display_name+"#"+message.author.discriminator)
@@ -352,6 +353,7 @@ async def o_list(client, conn, context, page):
                     link=link,
                     id=server["discord_id"]
                 ))
+                pop_cached_server(server_id)
             else:
                 link = "https://discord-server.com/"+server["discord_id"]
         else:
@@ -859,6 +861,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             return
         if arg2 in prefix_list:
             await conn.execute("UPDATE settings SET prefix = '{}' WHERE discord_id = '{}'".format(arg2,server_id))
+            pop_cached_server(server_id)
             em.description = locale[lang]["other_set_prefix_success"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 prefix=arg2
@@ -867,6 +870,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
             return
         elif arg2 == "default":
             await conn.execute("UPDATE settings SET prefix = '{}' WHERE discord_id = '{}'".format('!',server_id))
+            pop_cached_server(server_id)
             em.description = locale[lang]["other_set_prefix_success"].format(
                 who=message.author.display_name+"#"+message.author.discriminator,
                 prefix='!'
@@ -910,6 +914,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
                 role_id=role.id,
                 server_id=message.server.id
             ))
+            pop_cached_server(server_id)
         else:
             await conn.execute("INSERT INTO settings(name, discord_id, autorole_id) VALUES('{name}', '{id}', '{role}')".format(
                 name=clear_name(message.server.name[:50]),
@@ -1088,6 +1093,7 @@ async def o_set(client, conn, context, arg1, arg2, args):
                 lang=arg2,
                 server_id=message.server.id
             ))
+            pop_cached_server(server_id)
         else:
             await conn.execute("INSERT INTO settings(name, discord_id, locale) VALUES('{name}', '{id}', '{lang}')".format(
                 name=clear_name(message.server.name[:50]),
@@ -1287,6 +1293,7 @@ async def o_remove(client, conn, context, arg1, arg2, args):
             await client.send_message(message.channel, embed=em)
             return
         dat = await conn.execute("UPDATE settings SET autorole_id = NULL WHERE discord_id = '{}'".format(message.server.id))
+        pop_cached_server(server_id)
         em.description = locale[lang]["other_autorole_success_delete"].format(
             who=message.author.display_name+"#"+message.author.discriminator
         )

@@ -174,8 +174,8 @@ async def working():
 async def monitoring():
     await client.wait_until_ready()
     while not client.is_closed:
-        latest = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings WHERE likes > 0 ORDER BY like_time DESC LIMIT 10")
-        top = await conn.fetch("SELECT name, discord_id, likes, invite FROM settings WHERE likes > 0 ORDER BY likes DESC, like_time DESC LIMIT 10")
+        latest = await conn.fetch("SELECT * FROM settings WHERE likes > 0 ORDER BY like_time DESC LIMIT 10")
+        top = await conn.fetch("SELECT * FROM settings WHERE likes > 0 ORDER BY likes DESC, like_time DESC LIMIT 10")
         for channel_id in monitoring_channels.keys():
             channel = client.get_channel(channel_id)
             if not channel:
@@ -194,6 +194,7 @@ async def monitoring():
                             link=link,
                             id=server["discord_id"]
                         ))
+                        pop_cached_server(server["discord_id"])
                     else:
                         link = "https://discord-server.com/"+server["discord_id"]
                 else:
@@ -223,6 +224,7 @@ async def monitoring():
                             link=link,
                             id=server["discord_id"]
                         ))
+                        pop_cached_server(server["discord_id"])
                     else:
                         link = "https://discord-server.com/"+server["discord_id"]
                 else:
@@ -367,7 +369,8 @@ async def on_member_join(member):
     logger.info("{0.name} | {0.id} joined at server - {1.name} | {1.id}\n".format(member, member.server))
     if not member.server.id in not_log_servers:
         await client.send_message(client.get_channel('486591862157606913'), "\🔵 **{2}**\n``({0.name} | {0.mention}) ==> [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
-    dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{id}'".format(id=member.server.id))
+    global conn
+    dat = await get_cached_server(conn, member.server.id)
     black = await conn.fetchrow("SELECT * FROM black_list_not_ddos WHERE discord_id = '{id}'".format(id=member.id))
     if black:
         lang = dat["locale"]
@@ -413,16 +416,12 @@ async def on_member_join(member):
         if role_dat:
             role_ids = role_dat["arguments"]
             if role_ids:
-                roles = []
                 for role_id in role_ids:
                     role = discord.utils.get(member.server.roles, id=str(role_id))
                     if role:
                         roles.append(role)
         if roles:
-            try:
-                await client.add_roles(member, *roles)
-            except:
-                pass
+            await client.add_roles(member, *roles)
 
         welcome_channel = client.get_channel(dat["welcome_channel_id"])
         if welcome_channel:
@@ -439,7 +438,7 @@ async def on_member_remove(member):
     dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(member.server.id))
     roles = []
     for role in member.roles:
-        if role.name == "@everyone":
+        if role.position == 0:
             continue
         roles.append(role.id)
     if roles:
@@ -492,19 +491,10 @@ async def on_ready():
     client.loop.create_task(statuses())
     client.loop.create_task(dbl_updating())
     client.loop.create_task(monitoring())
+    client.loop.create_task(spamming(client))
     client.loop.create_task(clear_cache())
     global top_servers
     top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
-    #await client.change_presence(game=discord.Game(name='Помощь - !help'))
-    #await client.change_presence(game=discord.Game(name='бота'))
-    #msg = client.
-
-# @client.event
-# async def on_reaction_add(reaction, user):
-# 	message_id = reaction.message.id
-# 	user_id = user.id
-# 	if(reaction.emoji.name == "cookie"):
-# 		f_giveaway_add(client, conn, message_id, user)
 
 @client.event
 async def on_command_error(error, ctx):
@@ -520,20 +510,6 @@ async def on_command_error(error, ctx):
         except:
             pass
     pass
-    # elif isinstance(error, commands.MissingRequiredArgument):
-    #     await send_cmd_help(ctx)
-    # elif isinstance(error, commands.BadArgument):
-    #     await send_cmd_help(ctx)
-
-# async def send_cmd_help(ctx):
-#     if ctx.invoked_subcommand:
-#         pages = client.formatter.format_help_for(ctx, ctx.invoked_subcommand)
-#         for page in pages:
-#             await client.send_message(ctx.message.channel, page)
-#     else:
-#         pages = client.formatter.format_help_for(ctx, ctx.command)
-#         for page in pages:
-#             await client.send_message(ctx.message.channel, page)
 
 
 
@@ -660,6 +636,12 @@ async def find_user(context, member_id: str):
 @is_it_support()
 async def find_voice(context, member_id: str):
     await a_find_voice(client, conn, context, member_id)
+
+@client.command(pass_context=True, name="sync", hidden=True)
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def sync(context):
+    await pop_cached_server(context.message.server.id)
 
 @client.command(pass_context=True, name="save_roles", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -1076,8 +1058,11 @@ async def on_message(message):
         return
 
     server_id = message.server.id
-    serv = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = \'{}\'".format(server_id))
+    serv = await get_cached_server(conn, server_id)
     if message.author.bot or not serv or not serv["is_enable"]:
+        return
+
+    if message.server.id == '485400595235340303' and await check_spam(client, conn, serv, message):
         return
 
     client.loop.create_task(check_words(client, message))
@@ -1099,10 +1084,11 @@ async def on_message(message):
     t = int(time.time())
     if dat:
         if (int(t) - dat["xp_time"]) >= serv["xp_cooldown"]:
-            global top_servers
-            count = 2
-            if any(server_id == server["discord_id"] for server in top_servers):
-                count *= 2
+            count = serv["message_award_count"]
+            if count != 0:
+                global top_servers
+                if any(server_id == server["discord_id"] for server in top_servers):
+                    count *= 2
             await conn.execute("UPDATE users SET xp_time = {time}, xp_count = {count}, messages = {messages}, cash = {cash} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
                 stats_type=stats_type,
                 time=t,

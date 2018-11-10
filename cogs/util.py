@@ -11,6 +11,7 @@ import apiai, json
 import asyncpg
 import imghdr
 import os
+import re
 from PIL import Image, ImageChops, ImageFont, ImageDraw, ImageSequence, ImageFilter
 from PIL.GifImagePlugin import getheader, getdata
 from functools import partial
@@ -57,7 +58,7 @@ async def u_voice_state_update(client, conn, logger, before, after):
         logger.error("'const' doesn't exists((")
         return
     if before.voice.voice_channel:
-        if not after.voice.voice_channel and before.id in voice_clients.keys():
+        if (not after.voice.voice_channel or (after.server.afk_channel and after.server.afk_channel.id == after.voice.voice_channel.id)) and before.id in voice_clients.keys():
             voice_time = int(time.time()) - voice_clients.pop(before.id, int(time.time()))
             if not const["is_global"]:
                 stats_type = before.server.id
@@ -69,13 +70,13 @@ async def u_voice_state_update(client, conn, logger, before, after):
                 stats_type=stats_type
             ))
             if dat:
-                voice_time = dat["voice_time"]
+                new_voice_time = dat["voice_time"]
                 if not voice_time:
                     voice_time = 0
-                await u_check_voice_time(client, conn, const, before, voice_time)
+                await u_check_voice_time(client, conn, const, before, voice_time, new_voice_time)
         await check_empty_voice(client, conn, const, before.voice.voice_channel)
     if after.voice.voice_channel:
-        if not before.id in voice_clients.keys():
+        if not before.id in voice_clients.keys() and not (after.server.afk_channel and after.server.afk_channel.id == after.voice.voice_channel.id):
             voice_clients[before.id] = int(time.time())
         if const["create_lobby_id"] and const["create_lobby_category_id"] and after.voice.voice_channel.id == const["create_lobby_id"]:
             if await check_captcha(client, conn, const, after, after): #client.get_channel("484805058760933377")
@@ -94,7 +95,7 @@ async def u_voice_state_update(client, conn, logger, before, after):
                         {
                             "id": after.id,
                             "type": "member",
-                            "allow": 334497041,
+                            "allow": 36701457,
                             "deny": 0
                         }
                     ]
@@ -151,7 +152,6 @@ async def u_createvoice(client, conn, logger, context):
     payload = {
         "name": "Create voice [+]",
         "type": 2,
-        "user_limit": 1,
         "parent_id": category_id,
         "permission_overwrites": [
             {
@@ -169,6 +169,7 @@ async def u_createvoice(client, conn, logger, context):
         category=category_id,
         server=server_id
     ))
+    pop_cached_server(server_id)
 
 async def u_setvoice(client, conn, logger, context):
     message = context.message
@@ -191,6 +192,7 @@ async def u_setvoice(client, conn, logger, context):
         return
     try:
         await conn.execute("UPDATE settings SET create_lobby_id = '{}' WHERE discord_id = '{}'".format(who.voice.voice_channel.id, server_id))
+        pop_cached_server(server_id)
         logger.error('Сервер {0.name} | {0.id}. Установлен войс канал. User - {1.name} | {1.id}\n'.format(who.server, who))
         em.description = '{}, войс для лобби установлен.'.format(clear_name(who.display_name[:50]))
         await client.send_message(message.channel, embed=em)
@@ -365,6 +367,9 @@ async def u_check_ddos(client, conn, logger, member):
 
 
 async def u_check_travelling(client, member):
+    global travelling_servers
+    if not travelling_servers:
+        return
     server_id = travelling_servers.get(member.server.id)
     if not server_id:
         return
@@ -559,25 +564,26 @@ async def u_check_support(client, conn, logger, message):
     else:
         chan_id = channel.id
 
-    travel_to = travelling_message_servers.get(message.server.id)
-    if travel_to and message.author.id != client.user.id and not message.author.bot:
-        travel_server_to = client.get_server(travel_to)
-        if travel_server_to:
-            travel_channel_to = discord.utils.get(
-                travel_server_to.channels,
-                name=channel.name,
-                type=channel.type
-                # topic=channel.topic
-            )
-            if travel_channel_to:
-                em = discord.Embed(colour=0xC5934B)
-                em.description = message.content
-                icon_url = message.author.avatar_url
-                if not icon_url:
-                    icon_url = message.author.default_avatar_url
-                em.set_author(name=message.author.name + "#" + message.author.discriminator, icon_url=icon_url)
-                em.set_footer(text="Отправлено с сервера "+message.server.name)
-                await client.send_message(travel_channel_to, embed=em)
+    if not channel.is_private:
+        travel_to = travelling_message_servers.get(message.server.id)
+        if travel_to and message.author.id != client.user.id and not message.author.bot:
+            travel_server_to = client.get_server(travel_to)
+            if travel_server_to:
+                travel_channel_to = discord.utils.get(
+                    travel_server_to.channels,
+                    name=channel.name,
+                    type=channel.type
+                    # topic=channel.topic
+                )
+                if travel_channel_to:
+                    em = discord.Embed(colour=0xC5934B)
+                    em.description = message.content
+                    icon_url = message.author.avatar_url
+                    if not icon_url:
+                        icon_url = message.author.default_avatar_url
+                    em.set_author(name=message.author.name + "#" + message.author.discriminator, icon_url=icon_url)
+                    em.set_footer(text="Отправлено с сервера "+message.server.name)
+                    await client.send_message(travel_channel_to, embed=em)
 
     dat = await conn.fetchrow("SELECT * FROM tickets WHERE request_id = '{request_id}' OR response_id = '{response_id}'".format(request_id=chan_id, response_id=chan_id))
     if not dat:
@@ -689,7 +695,7 @@ async def check_captcha(client, conn, const, channel, member):
 
 
 
-async def u_check_voice_time(client, conn, const, user, voice_time):
+async def u_check_voice_time(client, conn, const, user, voice_time, new_voice_time):
     pass
 
 
@@ -800,7 +806,7 @@ async def send_welcome_pic(client, channel, user, const):
         0, 1, 2, 1, 0
     ]
     kernelsum = sum(kernel)
-    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.5 * kernelsum)
+    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.3 * kernelsum)
     halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
     ImageDraw.Draw(halo).text(
         (435, 120),
@@ -953,6 +959,105 @@ async def u_verify(client, conn, context, identify):
     except:
         await client.send_message(message.channel, embed=em)
     return
+
+
+spam_messages = {}
+spamming_objs = []
+
+async def spamming(client):
+    global spam_messages
+    global spamming_objs
+    await client.wait_until_ready()
+    while not client.is_closed:
+        for obj in spamming_objs:
+            author = obj.get("author")
+            const = obj.get("const")
+            lang = const["locale"]
+            user = spam_messages.get(author.id)
+            role = discord.utils.get(author.server.roles, id=const["antispam_role_id"])
+            roles = author.roles
+            if role:
+                roles.append(role)
+            em = discord.Embed(
+                title="Tomori ANTISPAM",
+                description=locale[lang]["antispam_spam"].format(who=author.display_name+"#"+author.discriminator),
+                colour=int(const["em_color"], 16) + 512
+            )
+            await asyncio.wait([
+                client.delete_messages(user.get("messages")),
+                client.send_message(author, embed=em),
+                client.replace_roles(author, *roles)
+            ])
+            try:
+                spam_messages.pop(author.id)
+            except:
+                pass
+        await asyncio.sleep(10)
+
+async def check_spam(client, conn, const, message):
+    text = message.content
+    author = message.author
+    if author.id == message.server.owner.id or any(role.permissions.administrator for role in author.roles):
+        return
+    lang = const["locale"]
+    if not lang in locale.keys():
+        return
+    em = discord.Embed(
+        title="Tomori ANTISPAM",
+        colour=int(const["em_color"], 16) + 512
+    )
+    # Links
+    if const["antispam_url"]:
+        urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
+        if "discord.gg" in text.lower():
+            urls.append(1)
+        if urls:
+            em.description = locale[lang]["antispam_url"].format(
+                who=message.author.display_name+"#"+message.author.discriminator,
+                server=message.server
+            )
+            await asyncio.wait([
+                client.delete_message(message),
+                client.send_message(message.author, embed=em)
+            ])
+            return True
+
+    # Spam
+    global spam_messages
+    global spamming_objs
+    if const["antispam_spam"]:
+        user = spam_messages.get(author.id)
+        _time = datetime.now()
+        if not user or (_time - user.get("first_message_time")).seconds > 5:
+            spam_messages.update({
+                author.id: {
+                    "messages": [
+                        message
+                    ],
+                    "first_message_time": _time
+                }
+            })
+            return False
+        elif len(user.get("messages")) > 5:
+            spamming_objs.append({
+                "author": author,
+                "const": const
+            })
+            return True
+        else:
+            mess = user.get("messages")
+            mess.append(message)
+            spam_messages.update({
+                author.id: {
+                    "messages": mess,
+                    "first_message_time": user.get("first_message_time")
+                }
+            })
+
+    # End
+    return False
+
+
 
 # async def u_check_achievements(client, conn, const, message, key):
 #     lang = const["locale"]

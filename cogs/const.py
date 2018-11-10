@@ -457,7 +457,7 @@ konoha_background_name_list = [
 
 lang_filter = {
     "475425777215864833": {
-        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'’\"•√π÷×¶∆£€₽¢^°∆%©®™✓;:][\{\}/?.«»₽> ,<–⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ№ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
+        "filter": "1234567890\\`~!@#$%^&*()_+—-=|'’\"•√π÷×¶∆£€₽¢^°∆%©®™✓;:][\{\}/?.«»₽> 〖〗,<–⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾”“₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ№ї₴єіqwertyuiopasdfghjklzxcvbnmйцукенгшщзхъфывапролджэячсмитьбюё",
         "report_channel": "484805775034810378"
     }
 }
@@ -529,6 +529,10 @@ async def get_cached_server(conn, id):
     if not id in cached_servers.keys():
         cached_servers[id] = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=id))
     return cached_servers.get(id)
+
+def pop_cached_server(id):
+    global cached_servers
+    return cached_servers.pop(id, None)
 
 
 

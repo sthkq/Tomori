@@ -737,7 +737,7 @@ async def f_sex(client, conn, context, who):
                 stats_type=stats_type,
                 id=who.id
             ))
-            em.description =  "{} трахнул {}".format(message.author.display_name+"#"+message.author.discriminator, who.display_name+"#"+who.discriminator)
+            em.description =  "{} трахнул {}".format(message.author.mention, who.mention)
             em.set_image(url=random.choice(sex_list))
     else:
         await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))

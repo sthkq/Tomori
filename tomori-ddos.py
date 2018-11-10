@@ -18,7 +18,7 @@ from cogs.const import *
 
 
 __name__ = "Tomori-ddos"
-__version__ = "3.15.1"
+__version__ = "3.16.0"
 
 
 
@@ -97,19 +97,39 @@ def is_it_me():
 global ban_members
 ban_members = []
 
+headers = {'authorization': "Bot "+settings["token"], 'Content-Type': 'application/json'}
+discord_api_url = "https://discordapp.com/api/v6"
+
+rq = requests.session()
+headers = rq.headers
+headers.update({'authorization': "Bot "+settings["token"], 'Content-Type': 'application/json'})
+ddos_payload = {
+    "delete-message-days": 1,
+    "reason": "Tomori DDOS-Protection"
+}
+
+async def ban_member(member):
+    global rq
+    response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
+    try:
+        delay = json.loads(response.text).get("retry_after")
+    except:
+        delay = None
+    while delay:
+        await asyncio.sleep(int(delay/1000)+1)
+        response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
+        try:
+            delay = json.loads(response.text).get("retry_after")
+        except:
+            delay = None
+
 async def kicking():
     global ban_members
     await asyncio.sleep(5)
     await client.wait_until_ready()
     while not client.is_closed:
         for member in ban_members:
-            try:
-                await client.ban(member)
-            except:
-                try:
-                    await client.kick(member)
-                except:
-                    pass
+            await ban_member(member)
         for member in ban_members:
             try:
                 await client.send_message(client.get_channel('480689437257498628'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]``".format(member, member.server, time.ctime(time.time())))
@@ -153,6 +173,8 @@ async def on_voice_state_update(before, after):
 
 @client.event
 async def on_member_join(member):
+    if "tomori" in member.name.lower() and member.id != client.user.id:
+        await client.send_message(client.get_channel('509796549115641856'), "**{2}**\n``({0.name} | {0.mention}) -> [{1.name} | {1.id}]  is_bot = {3}``".format(member, member.server, time.ctime(time.time()), str(member.bot)))
     if member.server.id in not_log_servers:
         return
     logger.info("{0.server.name} | {0.server.id} ({delta} дней) joined at server - {0.name} | {0.id}".format(member, delta=(datetime.utcnow() - member.created_at).days))
@@ -165,13 +187,7 @@ async def on_member_join(member):
             await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха#0956 (<@501869445531041792>)``".format(member, time.ctime(time.time())))
         except:
             pass
-        try:
-            await client.ban(member)
-        except:
-            try:
-                await client.kick(member)
-            except:
-                pass
+        await ban_member(member)
     # if not member.server.id in ddosers.keys():
     #     ddosers[member.server.id] = []
     # ddosers[member.server.id].append(member.id)
@@ -272,7 +288,7 @@ async def bl(context, mes: str=None):
     dat = await conn.fetchrow("SELECT name FROM black_list WHERE discord_id = '{}'".format(mes))
     em = discord.Embed(colour=0xC5934B)
     try:
-        await client.ban(message.server.get_member(mes))
+        await ban_member(message.server.get_member(mes))
     except:
         pass
     if not mes:
