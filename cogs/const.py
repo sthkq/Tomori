@@ -14,8 +14,8 @@ from typing import Union
 
 moon_server = {
 "злиться":{
-    "response":"{author} злиться на {who}. Хм... что же он(а) такого сделал(а)?",
-    "is_who": True,
+    "response":"{author} злиться на {user}. Хм... что же он(а) такого сделал(а)?",
+    "is_who": "True",
     "gifs":[
             "https://cdn.discordapp.com/attachments/504948339809320960/506771700759658516/baka2.gif",
             "https://cdn.discordapp.com/attachments/504948339809320960/506771698864095262/baka1.gif",
@@ -35,8 +35,8 @@ moon_server = {
     ]
 },
 "секс":{
-    "response":"{author} Хочет заняться сексом с {who}. Сейчас будет жарко.",
-    "is_who": True,
+    "response":"{author} Хочет заняться сексом с {user}. Сейчас будет жарко",
+    "is_who": "True",
     "gifs":[
         "https://cdn.discordapp.com/attachments/504948339809320960/506773551991488522/sex1.gif",
         "https://cdn.discordapp.com/attachments/504948339809320960/506773548870926337/sex_1.gif",
@@ -49,15 +49,15 @@ moon_server = {
     ]
 },
 "суицид":{
-    "response":"{author} ушёл(a) в мир иной... прощай, мы будем скучать.",
+    "response":"{author} ушёл(a) в мир иной... прощай, мы будем скучать",
     "gifs":[
         "https://cdn.discordapp.com/attachments/504948339809320960/506774310107611136/suicide1.gif",
         "https://cdn.discordapp.com/attachments/504948339809320960/506774311743520776/suicide2.gif"
     ]
 },
 "гладить":{
-    "response":"{author} гладит {who}. Это так мило ^^",
-    "is_who": True,
+    "response":"{author} гладит {user}. Это так мило ^^",
+    "is_who": "True",
     "gifs":[
         "https://cdn.discordapp.com/attachments/504948339809320960/506774656842465300/1.gif",
         "https://cdn.discordapp.com/attachments/504948339809320960/506774662957498389/3.gif",
@@ -75,8 +75,8 @@ moon_server = {
     ]
 },
 "кусь":{
-    "response":"Кусь! {author} укусил(a) {who}.",
-    "is_who": True,
+    "response":"Кусь! {author} укусил(a) {user}",
+    "is_who": "True",
     "gifs":[
         "https://cdn.discordapp.com/attachments/504948339809320960/506776383175786506/2.gif",
         "https://cdn.discordapp.com/attachments/504948339809320960/506776387022225408/1.gif",
@@ -85,8 +85,8 @@ moon_server = {
     ]
 },
 "обнять":{
-    "response":"{author} обнял(а) {who}. Это так романтично",
-    "is_who": True,
+    "response":"{author} обнял(а) {user}. Это так романтично",
+    "is_who": "True",
     "gifs":[
         "https://cdn.discordapp.com/attachments/504948339809320960/506777002309582863/1.gif",
         "https://cdn.discordapp.com/attachments/504948339809320960/506777067539398656/1.gif",
@@ -100,20 +100,20 @@ moon_server = {
 
 
 punch_list = ['https://media.giphy.com/media/1n753Z1ZeGdkwxtYHo/giphy.gif',
-		       'https://media.giphy.com/media/WgN70xgCycyg2ZC5G6/giphy.gif',
-		       'https://media.giphy.com/media/orU5Hg8KwR430W7GIs/giphy.gif',
-		       'https://media.giphy.com/media/PiieOBhf5ymvOVxnzm/giphy.gif',
-		       'https://media.giphy.com/media/Xpj8gSHOCxONPz19AV/giphy.gif',
-		       'https://media.giphy.com/media/YxwAwiJEqEoFi/giphy.gif']
+               'https://media.giphy.com/media/WgN70xgCycyg2ZC5G6/giphy.gif',
+               'https://media.giphy.com/media/orU5Hg8KwR430W7GIs/giphy.gif',
+               'https://media.giphy.com/media/PiieOBhf5ymvOVxnzm/giphy.gif',
+               'https://media.giphy.com/media/Xpj8gSHOCxONPz19AV/giphy.gif',
+               'https://media.giphy.com/media/YxwAwiJEqEoFi/giphy.gif']
 
 drink_list = ['https://media.giphy.com/media/1xlqPePKvCM3xVkWet/giphy.gif',
-		      'https://media.giphy.com/media/9rlYebzurMAXNaBGUO/giphy.gif',
-		      'https://media.giphy.com/media/1zlE7BBo7BuwpKfA4Z/giphy.gif',
-		      'https://media.giphy.com/media/nKMYwijvNrRwQJtq6W/giphy.gif',
-		      'https://media.giphy.com/media/eeLJdyAGPjnChKSlhu/giphy.gif',
-		      'https://media.giphy.com/media/55ma8eHi4YPCz6IZZO/giphy.gif',
-		      'https://media.giphy.com/media/NSqNZRkKShyKtedi0c/giphy.gif',
-		      'https://media.giphy.com/media/1BfhcYJtmPsM81JaRR/giphy.gif']
+              'https://media.giphy.com/media/9rlYebzurMAXNaBGUO/giphy.gif',
+              'https://media.giphy.com/media/1zlE7BBo7BuwpKfA4Z/giphy.gif',
+              'https://media.giphy.com/media/nKMYwijvNrRwQJtq6W/giphy.gif',
+              'https://media.giphy.com/media/eeLJdyAGPjnChKSlhu/giphy.gif',
+              'https://media.giphy.com/media/55ma8eHi4YPCz6IZZO/giphy.gif',
+              'https://media.giphy.com/media/NSqNZRkKShyKtedi0c/giphy.gif',
+              'https://media.giphy.com/media/1BfhcYJtmPsM81JaRR/giphy.gif']
 
 hug_list = [
 "https://media.giphy.com/media/EvYHHSntaIl5m/giphy.gif",
@@ -185,7 +185,17 @@ sex_list = [
 'https://discord.band/gif/2.gif',
 'https://discord.band/gif/3.gif',
 'https://discord.band/gif/5.gif',
-'https://discord.band/gif/6.gif'
+'https://discord.band/gif/6.gif',
+'https://discord.band/gif/7.gif',
+'https://discord.band/gif/8.gif',
+'https://discord.band/gif/9.gif',
+'https://discord.band/gif/10.gif',
+'https://discord.band/gif/11.gif',
+'https://discord.band/gif/12.gif',
+'https://discord.band/gif/13.gif',
+'https://discord.band/gif/14.gif',
+'https://discord.band/gif/15.gif',
+'https://discord.band/gif/16.gif'
 ]
 
 kiss_list = [
@@ -267,17 +277,17 @@ kiss_list = [
 ]
 
 wink_list = ['https://media.discordapp.net/attachments/436139161070731264/462679150163918849/orig.gif',
-			 'https://cdn.discordapp.com/attachments/436139161070731264/462679245945307146/giphy-1.gif',
-			 'https://cdn.discordapp.com/attachments/436139161070731264/462679323506245632/girls_winking_02.gif',
-			 'https://cdn.discordapp.com/attachments/436139161070731264/462679514330431488/girls_winking_16.gif',
-			 'https://cdn.discordapp.com/attachments/436139161070731264/462679850553966602/tenor.gif']
+             'https://cdn.discordapp.com/attachments/436139161070731264/462679245945307146/giphy-1.gif',
+             'https://cdn.discordapp.com/attachments/436139161070731264/462679323506245632/girls_winking_02.gif',
+             'https://cdn.discordapp.com/attachments/436139161070731264/462679514330431488/girls_winking_16.gif',
+             'https://cdn.discordapp.com/attachments/436139161070731264/462679850553966602/tenor.gif']
 
 fuck_list = ['https://media.giphy.com/media/9DayfKDecuCwUMRs38/giphy.gif',
-			 'https://media.giphy.com/media/621mG5MkWcAX00a5J4/giphy.gif',
-			 'https://media.giphy.com/media/29MEDvCpkzMMCvuZB5/giphy.gif',
-			 'https://media.giphy.com/media/cUVsttxcdKJJVRiFAd/giphy.gif',
-			 'https://media.giphy.com/media/PQxjfWa751RVJTtkS5/giphy.gif',
-			 'https://media.giphy.com/media/9J6Rye3Fz0Dq0oHeVH/giphy.gif']
+             'https://media.giphy.com/media/621mG5MkWcAX00a5J4/giphy.gif',
+             'https://media.giphy.com/media/29MEDvCpkzMMCvuZB5/giphy.gif',
+             'https://media.giphy.com/media/cUVsttxcdKJJVRiFAd/giphy.gif',
+             'https://media.giphy.com/media/PQxjfWa751RVJTtkS5/giphy.gif',
+             'https://media.giphy.com/media/9J6Rye3Fz0Dq0oHeVH/giphy.gif']
 
 five_list = [
 'https://media.giphy.com/media/4H70la8QkZfaUvV9G4/giphy.gif',
@@ -535,25 +545,36 @@ def pop_cached_server(id):
     return cached_servers.pop(id, None)
 
 
+async def check_badges(conn, id, badges):
+    dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'badges' AND name = '{id}'".format(id=id))
+    ret = []
+    if not dat:
+        return ret
+    for badge in badges:
+        if badge in dat["arguments"]:
+            ret.append(badge)
+    return ret
+
+
 
 prefix_list = [
-	'!',
-	'?',
-	'$',
-	't!',
-	't?',
-	't$',
-	'.',
-	'-',
-	'+',
-	'\\',
-	';',
-	'>',
-	'<',
-	'~',
-	'^',
-	'=',
-	'_'
+    '!',
+    '?',
+    '$',
+    't!',
+    't?',
+    't$',
+    '.',
+    '-',
+    '+',
+    '\\',
+    ';',
+    '>',
+    '<',
+    '~',
+    '^',
+    '=',
+    '_'
 ]
 
 
@@ -607,40 +628,40 @@ slots_ver = []
 
 i = 0
 while i < 3:
-	i += 1
-	slots_ver.append(slot_kanna)
+    i += 1
+    slots_ver.append(slot_kanna)
 i = 0
 while i < 40:
-	i += 1
-	slots_ver.append(slot_melban)
+    i += 1
+    slots_ver.append(slot_melban)
 i = 0
 while i < 40:
-	i += 1
-	slots_ver.append(slot_boom)
+    i += 1
+    slots_ver.append(slot_boom)
 i = 0
 while i < 5:
-	i += 1
-	slots_ver.append(slot_pantsu1)
+    i += 1
+    slots_ver.append(slot_pantsu1)
 i = 0
 while i < 10:
-	i += 1
-	slots_ver.append(slot_pantsu2)
+    i += 1
+    slots_ver.append(slot_pantsu2)
 i = 0
 while i < 15:
-	i += 1
-	slots_ver.append(slot_doge)
+    i += 1
+    slots_ver.append(slot_doge)
 i = 0
 while i < 20:
-	i += 1
-	slots_ver.append(slot_salt)
+    i += 1
+    slots_ver.append(slot_salt)
 i = 0
 while i < 25:
-	i += 1
-	slots_ver.append(slot_awoo)
+    i += 1
+    slots_ver.append(slot_awoo)
 i = 0
 while i < 30:
-	i += 1
-	slots_ver.append(slot_trap)
+    i += 1
+    slots_ver.append(slot_trap)
 
 default_message = discord.Embed(color=0xC5934B)
 success_message = discord.Embed(color=0x00ff08)
@@ -657,7 +678,10 @@ SLOTS_MAX_BET = 5000
 
 not_log_servers = [
 "264445053596991498",
-"110373943822540800"
+"110373943822540800",
+"401422952639496213",
+"435863655314227211",
+"450100127256936458"
 ]
 
 log_join_leave_server_channel_id = "493196075352457247"
@@ -676,6 +700,10 @@ tester_role_id = "477738087212908544"
 
 uptimes = 0
 
+
+global muted_users
+muted_users = {}
+
 global top_servers
 top_servers = []
 
@@ -688,7 +716,7 @@ tomori_links = '[Vote](https://discordbots.org/bot/491605739635212298/vote "for 
 # tomori_links = '[Join Konoha](https://discord.gg/PErt9KY "Join anime Naruto")'
 
 def clear_name(name):
-	return re.sub(r'[\';"\\]+', '', name)
+    return re.sub(r'[\';"\\]+', '', name)
 
 
 
@@ -802,11 +830,11 @@ async def dict_to_embed(ret):
 
 
 errors = {
-	"user_in_not_exists_guild": "Guild Error 404",
+    "user_in_not_exists_guild": "Guild Error 404",
     "guild_remove_not_exists": "Guild Error 500",
-	"guild_info_not_exists": "Guild Error 403",
+    "guild_info_not_exists": "Guild Error 403",
     "guild_join_member_not_exists": "Guild Error 99",
-	"guild_accept_bad_response": "Guild Error 69"
+    "guild_accept_bad_response": "Guild Error 69"
 }
 
 
@@ -835,6 +863,10 @@ captcha_list = {
     "𝙄 𝙝𝙖𝙩𝙚 𝙮𝙤𝙪": "i hate you"
 }
 
+captcha_symbols = [
+    "EYUIOA",
+    "QWRTPSDFGHJKLZXCVBNM"
+]
 
 
 
@@ -848,13 +880,13 @@ welcome_responses_dm = {
     },
 # КАКТАМНОВОСТИ
 "496507405732020224": {
-	  "description": "**Добро пожаловать на новостной сервер КАКТАМНОВОСТИ.**\n\nПрежде чем ты начнешь знакомиться с остальными участниками, пожалуйста,  ознакомься с полезной информацией на канале <#496697194649223175>\n\n*Тут могут быть БУФЕРА, ТРЕШ и НЕ БУДЕТ НАСТЫРНЫХ ПРАВЕДНИКОВ, (возможно).\nНадеюсь тебе у нас понравится!\nЖелаем приятного время КАКТАМпровождения.*\n\nЧто ж, веселись и приглашай друзей! :blush:\nПокедова, увидимся на сервере :heart: ",
-	  "author": {
-	    "name": "КАКТАМНОВОСТИ",
-	    "icon_url": "https://images-ext-2.discordapp.net/external/Nne3hrU-e2gDmobjirCrOJO3dVfeTSiYx6Y2l4cf1EE/https/cdn.discordapp.com/icons/496507405732020224/5c81c2acec3621896e4a7f1a15947975.jpg"
-	  },
-	  "color": 3553599
-	}
+      "description": "**Добро пожаловать на новостной сервер КАКТАМНОВОСТИ.**\n\nПрежде чем ты начнешь знакомиться с остальными участниками, пожалуйста,  ознакомься с полезной информацией на канале <#496697194649223175>\n\n*Тут могут быть БУФЕРА, ТРЕШ и НЕ БУДЕТ НАСТЫРНЫХ ПРАВЕДНИКОВ, (возможно).\nНадеюсь тебе у нас понравится!\nЖелаем приятного время КАКТАМпровождения.*\n\nЧто ж, веселись и приглашай друзей! :blush:\nПокедова, увидимся на сервере :heart: ",
+      "author": {
+        "name": "КАКТАМНОВОСТИ",
+        "icon_url": "https://images-ext-2.discordapp.net/external/Nne3hrU-e2gDmobjirCrOJO3dVfeTSiYx6Y2l4cf1EE/https/cdn.discordapp.com/icons/496507405732020224/5c81c2acec3621896e4a7f1a15947975.jpg"
+      },
+      "color": 3553599
+    }
 }
 
 

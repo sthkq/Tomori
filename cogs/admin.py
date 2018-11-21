@@ -14,6 +14,7 @@ from discord.ext import commands
 from cogs.const import *
 from cogs.ids import *
 from cogs.locale import *
+from cogs.util import *
 
 async def a_enable(client, conn, context):
     message = context.message
@@ -362,7 +363,7 @@ async def a_kick(client, conn, context, who, reason):
     server = message.server
     server_id = message.server.id
     author = message.author
-    const = await conn.fetchrow("SELECT em_color, is_kick, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -435,7 +436,7 @@ async def a_ban(client, conn, context, who, reason):
     server = message.server
     server_id = message.server.id
     author = message.author
-    const = await conn.fetchrow("SELECT em_color, is_ban, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -508,7 +509,7 @@ async def a_unban(client, conn, context, whos, reason):
     server = message.server
     server_id = message.server.id
     author = message.author
-    const = await conn.fetchrow("SELECT em_color, is_kick, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
     if not lang in locale.keys():
         em = discord.Embed(description="{who}, {response}.".format(
@@ -579,3 +580,109 @@ async def a_unban(client, conn, context, whos, reason):
         em.description = locale[lang]["admin_didnt_manage_to_unban"].format(clear_name(message.author.display_name[:50]), who.display_name)
         await client.send_message(message.channel, embed=em)
         return
+
+async def a_mute(client, conn, context, who, mute_time, reason):
+    message = context.message
+    server = message.server
+    server_id = message.server.id
+    author = message.author
+    const = await get_cached_server(conn, server_id)
+    lang = const["locale"]
+    if not lang in locale.keys():
+        em = discord.Embed(description="{who}, {response}.".format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            response="ошибка локализации",
+            colour=0xC5934B))
+        await client.send_message(message.channel, embed=em)
+        return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    if not const or not const["is_mute"]:
+        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    try:
+        await client.delete_message(message)
+    except:
+        pass
+    if not author == server.owner:
+        for role in author.roles:
+            if role.permissions.ban_members or role.permissions.administrator:
+                break
+        else:
+            em.description = locale[lang]["global_not_allowed"].format(message.author.display_name+"#"+message.author.discriminator)
+            await client.send_message(message.channel, embed=em)
+            return
+    member = discord.utils.get(message.server.members, name=who)
+    if not member:
+        who = re.sub(r'[<@#&!>]+', '', who.lower())
+        member = discord.utils.get(message.server.members, id=who)
+    if not member:
+        em.description = locale[lang]["incorrect_argument"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            arg="user"
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    if member == server.owner or any(role.permissions.administrator for role in member.roles):
+        em.description = locale[lang]["admin_can_not_mute"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        await client.send_message(message.channel, embed=em)
+        return
+    if not reason:
+        reason = locale[lang]["admin_no_reason"]
+    else:
+        res = message.content.split(maxsplit=2)
+        reason = res[2]
+    unmute_time = int(time.time()) + mute_time
+    if not const["antispam_role_id"]:
+        return
+    role = discord.utils.get(server.roles, id=const["antispam_role_id"])
+    if not role:
+        return
+    await client.add_roles(member, role)
+
+    user_dat = await conn.fetchrow("SELECT * FROM mods WHERE type = 'muted_users' AND server_id = '{server}' AND name = '{member}'".format(
+        server=server.id,
+        member=member.id
+    ))
+    if user_dat:
+        return
+    user_dat = await conn.fetchrow("INSERT INTO mods(server_id, name, type, condition, value) VALUES('{server}', '{member}', 'muted_users', '{condition}', 'unmute') RETURNING *".format(
+        server=server.id,
+        member=member.id,
+        condition=unmute_time
+    ))
+    add_muted(client, user_dat)
+    hours=str(mute_time//3600)
+    minutes=str((mute_time//60)%60)
+    seconds=str(mute_time%60)
+    c_mute = discord.Embed(colour=0xF10118)
+    c_mute.set_author(name=locale[lang]["admin_user_mute"], icon_url=server.icon_url)
+    c_mute.add_field(
+        name=locale[lang]["admin_user"],
+        value="{0.mention}".format(member),
+        inline=True
+    )
+    c_mute.add_field(
+        name=locale[lang]["admin_moderator"],
+        value="{0.mention}".format(message.author),
+        inline=True
+    )
+    c_mute.add_field(
+        name=locale[lang]["admin_time"],
+        value=locale[lang]["global_time"].format(
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds
+        ),
+        inline=True
+    )
+    c_mute.add_field(
+        name=locale[lang]["admin_reason"],
+        value="{0}".format(reason),
+        inline=True
+    )
+    c_mute.set_footer(text="ID: {0.id} • {1}".format(member, time.ctime(time.time())))
+    if server_id == nazarik_id:
+        await client.send_message(client.get_channel(nazarik_log_id), embed=c_mute)
+    await client.send_message(message.channel, embed=c_mute)
+    return

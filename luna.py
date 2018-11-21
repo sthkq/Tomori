@@ -30,10 +30,10 @@ __name__ = "Tomori"
 __version__ = "3.27.0"
 
 
-logger = logging.getLogger('tomori')
+logger = logging.getLogger('luna')
 logger.setLevel(logging.DEBUG)
 now = datetime.now()
-logname = 'logs/{}_{}.log'.format(now.day, now.month)
+logname = 'logs/luna_{}_{}.log'.format(now.day, now.month)
 try:
     f = open(logname, 'r')
 except:
@@ -48,10 +48,10 @@ handler.setFormatter(logging.Formatter(
     '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-loggers = logging.getLogger('tomori-inform')
+loggers = logging.getLogger('luna-inform')
 loggers.setLevel(logging.DEBUG)
 now = datetime.now()
-logname = 'logs/inform->{}_{}.log'.format(now.day, now.month)
+logname = 'logs/luna_inform->{}_{}.log'.format(now.day, now.month)
 try:
     f = open(logname, 'r')
 except:
@@ -71,6 +71,8 @@ loop = asyncio.get_event_loop()
 
 global conn
 conn = None
+global ddos_conn
+ddos_conn = None
 global client
 client = None
 global dblpy
@@ -82,14 +84,12 @@ async def get_prefixes():
 
 async def run_base():
     global conn
+    global ddos_conn
     try:
         conn = await asyncpg.create_pool(dsn="postgres://{user}:{password}@{host}:5432/{database}".format(host="localhost", database="tomori", user=settings["base_user"], password=settings["base_password"]), command_timeout=60)
+        ddos_conn = await asyncpg.create_pool(dsn="postgres://{user}:{password}@{host}:5432/{database}".format(host="localhost", database="ddos", user=settings["base_user"], password=settings["base_password"]), command_timeout=60)
         global top_servers
         top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
-        muted = await conn.fetch("SELECT * FROM mods WHERE type = 'muted_users' ORDER BY condition::int ASC")
-        if muted:
-            for user in muted:
-                add_muted(client, user)
     except:
         logger.error('PostgreSQL doesn\'t load.\n')
         exit(0)
@@ -99,31 +99,6 @@ async def run_base():
 loop.run_until_complete(get_prefixes())
 loop.run_until_complete(run_base())
 
-
-
-rq = requests.session()
-headers = rq.headers
-headers.update({'authorization': "Bot "+settings["token"], 'Content-Type': 'application/json'})
-discord_api_url = "https://discordapp.com/api/v6"
-ddos_payload = {
-    "delete-message-days": 1,
-    "reason": "Tomori DDOS-Protection"
-}
-
-async def ban_member(member):
-    global rq
-    response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
-    try:
-        delay = json.loads(response.text).get("retry_after")
-    except:
-        delay = None
-    while delay:
-        await asyncio.sleep(int(delay/1000)+1)
-        response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
-        try:
-            delay = json.loads(response.text).get("retry_after")
-        except:
-            delay = None
 
 
 def is_it_admin():
@@ -187,134 +162,13 @@ async def working():
         await asyncio.sleep(WORK_DELAY)
 
 
-async def monitoring():
-    await client.wait_until_ready()
-    while not client.is_closed:
-        latest = await conn.fetch("SELECT * FROM settings WHERE likes > 0 ORDER BY like_time DESC LIMIT 10")
-        top = await conn.fetch("SELECT * FROM settings WHERE likes > 0 ORDER BY likes DESC, like_time DESC LIMIT 10")
-        for channel_id in monitoring_channels.keys():
-            channel = client.get_channel(channel_id)
-            if not channel:
-                continue
-            latest_embed = discord.Embed(color=16766208)
-            top_embed = discord.Embed(color=65411)
-            for index, server in enumerate(latest):
-                member_count = 0
-                serv = client.get_server(server["discord_id"])
-                if serv:
-                    member_count = serv.member_count
-                if not server["invite"] or not await u_check_invite(client, server["invite"]):
-                    link = await u_invite_to_server(client, server["discord_id"])
-                    if link:
-                        await conn.execute("UPDATE settings SET invite = '{link}' WHERE discord_id = '{id}'".format(
-                            link=link,
-                            id=server["discord_id"]
-                        ))
-                        pop_cached_server(server["discord_id"])
-                    else:
-                        link = "https://discord-server.com/"+server["discord_id"]
-                else:
-                    link = server["invite"]
-                latest_embed.add_field(
-                    name="#{index} {name}".format(
-                        index=index+1,
-                        name=server["name"]
-                    ),
-                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162> **__join__**]({link} \"{link_message}\")".format(
-                        likes=server["likes"],
-                        member_count=member_count,
-                        link=link,
-                        link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
-                    ),
-                    inline=True
-                )
-            for index, server in enumerate(top):
-                member_count = 0
-                serv = client.get_server(server["discord_id"])
-                if serv:
-                    member_count = serv.member_count
-                if not server["invite"] or not await u_check_invite(client, server["invite"]):
-                    link = await u_invite_to_server(client, server["discord_id"])
-                    if link:
-                        await conn.execute("UPDATE settings SET invite = '{link}' WHERE discord_id = '{id}'".format(
-                            link=link,
-                            id=server["discord_id"]
-                        ))
-                        pop_cached_server(server["discord_id"])
-                    else:
-                        link = "https://discord-server.com/"+server["discord_id"]
-                else:
-                    link = server["invite"]
-                top_embed.add_field(
-                    name="#{index} {name}".format(
-                        index=index+1,
-                        name=server["name"]
-                    ),
-                    value="<:likes:493040819402702869>\xa0{likes}\xa0\xa0<:users:492827033026560020>\xa0{member_count}\xa0\xa0[<:server:492861835087708162> **__join__**]({link} \"{link_message}\")".format(
-                        likes=server["likes"],
-                        member_count=member_count,
-                        link=link,
-                        link_message=locale[monitoring_channels[channel_id].get("locale")]["other_list_link_message"]
-                    ),
-                    inline=True
-                )
-            try:
-                await client.purge_from(channel, limit=10)
-            except:
-                pass
-            latest_embed.title = monitoring_channels[channel_id].get("latest")
-            top_embed.title = monitoring_channels[channel_id].get("top")
-            await client.send_message(channel, embed=top_embed)
-            await client.send_message(channel, embed=latest_embed)
-        await asyncio.sleep(3600)
-
 
 async def statuses():
     await client.wait_until_ready()
     while not client.is_closed:
-        await client.change_presence(game=discord.Game(type=3, name="{servers_count} servers | !help".format(servers_count=len(client.servers))))
+        await client.change_presence(game=discord.Game(type=2, name="Селестию".format(servers_count=len(client.servers))))
         await asyncio.sleep(20)
 
-        users_count = 0
-        try:
-            for server in client.servers:
-                users_count += server.member_count
-        except:
-            pass
-        await client.change_presence(game=discord.Game(type=3, name="{users_count} users | !help".format(users_count=users_count)))
-        await asyncio.sleep(20)
-
-
-
-async def mutting():
-    global muted_users
-    await client.wait_until_ready()
-    while True:
-        if muted_users:
-            t = int(time.time())
-            min_t = min(muted_users.keys())
-            if t >= min_t:
-                objs = muted_users.pop(min_t)
-                for o in objs:
-                    if o["type"] == "unmute":
-                        await u_unmute(client, conn, o["server"], o["member"])
-                await asyncio.sleep(60)
-            else:
-                await asyncio.sleep(10)
-        else:
-            await asyncio.sleep(10)
-
-
-
-async def dbl_updating():
-    await client.wait_until_ready()
-    dblpy = dbl.Client(client, settings["dbl_token"])
-    while True:
-        try:
-            await dblpy.post_server_count()
-        except:
-            pass
-        await asyncio.sleep(1800)
 
 
 
@@ -340,18 +194,10 @@ async def on_server_join(server):
         if not server.region == "russia":
             lang = "english"
         await conn.execute("INSERT INTO settings(name, discord_id, locale) VALUES('{name}', '{discord_id}', '{locale}')".format(name=clear_name(server.name[:50]), discord_id=server.id, locale=lang))
-    await client.send_message(
-        client.get_channel(log_join_leave_server_channel_id),
-        "\🔵 Томори добавили на сервер {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=server.member_count)
-    )
 
 @client.event
 async def on_server_remove(server):
     logger.info("Removed from server - {} | id - {}\n".format(server.name, server.id))
-    await client.send_message(
-        client.get_channel(log_join_leave_server_channel_id),
-        "\🔴 Томори удалили с сервера {name} | {id}. ({count} участников)".format(name=server.name, id=server.id, count=server.member_count)
-    )
 
 
 global voice_clients
@@ -433,6 +279,7 @@ async def check_empty_voice(client, conn, const, channel):
 
 
 
+
 @client.event
 async def on_socket_raw_receive(raw_msg):
     if not isinstance(raw_msg, str):
@@ -474,12 +321,44 @@ async def on_member_update(before, after):
 
 
 
+rq = requests.session()
+headers = rq.headers
+headers.update({'authorization': "Bot "+settings["luna_token"], 'Content-Type': 'application/json'})
+discord_api_url = "https://discordapp.com/api/v6"
+ddos_payload = {
+    "delete-message-days": 1,
+    "reason": "Tomori DDOS-Protection"
+}
+
+async def ban_member(member):
+    global rq
+    response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
+    try:
+        delay = json.loads(response.text).get("retry_after")
+    except:
+        delay = None
+    while delay:
+        await asyncio.sleep(int(delay/1000)+1)
+        response = rq.put("{base}/guilds/{server}/bans/{member}".format(base=discord_api_url, server=member.server.id, member=member.id), params=ddos_payload)
+        try:
+            delay = json.loads(response.text).get("retry_after")
+        except:
+            delay = None
+
 @client.event
 async def on_member_join(member):
     logger.info("{0.name} | {0.id} joined at server - {1.name} | {1.id}\n".format(member, member.server))
-    if not member.server.id in not_log_servers:
-        await client.send_message(client.get_channel('486591862157606913'), "\🔵 **{2}**\n``({0.name} | {0.mention}) ==> [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
     global conn
+    global ddos_conn
+    dat = await ddos_conn.fetchrow("SELECT discord_id FROM black_list WHERE discord_id = '{discord_id}'".format(discord_id=member.id))
+    if dat:
+        try:
+            await client.send_message(member.server.owner, "**{1}**\n``С твоего сервера '{0.server.name}' кикнут ({0.name} | {0.mention}) по причине нахождения в черном списке (DDOS-атаки) Tomori.``".format(member, time.ctime(time.time())))
+            await client.send_message(member, "**{1}**\n``Вас кикнули с сервера '{0.server.name}' по причине нахождения в черном списке (DDOS-атаки) Tomori. По вопросам разбана писать Ананасовая Печенюха#0956 (<@501869445531041792>)``".format(member, time.ctime(time.time())))
+        except:
+            pass
+        await ban_member(member)
+        return
     dat = await get_cached_server(conn, member.server.id)
     black = await conn.fetchrow("SELECT * FROM black_list_not_ddos WHERE discord_id = '{id}'".format(id=member.id))
     if black:
@@ -508,15 +387,6 @@ async def on_member_join(member):
                     except:
                         pass
 
-    await u_check_travelling(client, member)
-
-    if member.server.id in welcome_responses_dm.keys():
-        text, em = await dict_to_embed(welcome_responses_dm.get(member.server.id))
-        try:
-            await client.send_message(member, content=text, embed=em)
-        except:
-            pass
-
     if dat:
         roles = []
         role = discord.utils.get(member.server.roles, id=dat["autorole_id"])
@@ -544,7 +414,6 @@ async def on_member_join(member):
 @client.event
 async def on_member_remove(member):
     logger.info("{0.name} | {0.id} removed from server - {1.name} | {1.id}\n".format(member, member.server))
-    await client.send_message(client.get_channel('486591862157606913'), "\🔴 *{2}*\n``({0.name} | {0.mention}) <== [{1.name} | {1.id}] ({delta} дней)``".format(member, member.server, time.ctime(time.time()), delta=(datetime.utcnow() - member.created_at).days))
     dat = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(member.server.id))
     roles = []
     for role in member.roles:
@@ -599,9 +468,6 @@ async def on_ready():
     print(client.user.id)
     print('------')
     client.loop.create_task(statuses())
-    client.loop.create_task(dbl_updating())
-    client.loop.create_task(monitoring())
-    client.loop.create_task(mutting())
     client.loop.create_task(clear_cache())
     global top_servers
     top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
@@ -762,13 +628,6 @@ async def lvlup(context, page: int=None):
 async def synclvlup(context):
     await o_synclvlup(client, conn, context)
 
-@client.command(pass_context=True, name="captcha")
-@is_it_me()
-async def captcha(context):
-    const = await get_cached_server(conn, context.message.server.id)
-    if await check_captcha_new(client, conn, const, context.message.channel, context.message.author):
-        await client.send_message(context.message.channel, "✅")
-
 @client.command(pass_context=True, name="pay", help="Получить печенюхи из банка сервера.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_admin()
@@ -850,6 +709,12 @@ async def base(context, mes: str=None):
 async def verify(context, identify: str):
     await u_verify(client, conn, context, identify)
 
+@client.command(pass_context=True, name="news", hidden=True, help="Сделать рассылку заданного сообщения.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def news(context, message_id: str=None):
+    await u_news(client, conn, context, message_id)
+
 @client.command(pass_context=True, name="move_to", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
@@ -894,6 +759,12 @@ async def dele(context, who: discord.Member, role_id: str):
 async def invite_server(context, server_id: str=None):
     await u_invite_server(client, conn, context, server_id)
 
+@client.command(pass_context=True, name="clone_roles", hidden=True, help="Скопировать роли на другой сервер.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+@is_it_me()
+async def clone_roles(context, server_id: str=None):
+    await u_clone_roles(client, conn, context, server_id)
+
 @client.command(pass_context=True, name="leave_server", hidden=True)
 @commands.cooldown(1, 1, commands.BucketType.user)
 @is_it_me()
@@ -901,6 +772,7 @@ async def leave_server(context, server_id: str):
     server = client.get_server(server_id)
     if server:
         await client.leave_server(server)
+
 
 @client.command(pass_context=True, name="invite_channel", hidden=True, help="Создать инвайт на данный канал.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -927,12 +799,7 @@ async def gift(context, count: int):
 @client.command(pass_context=True, name="top", help="Показать топ юзеров.")
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def top(context, page: int=None):
-    await f_top(client, conn, context, page, "xp")
-
-@client.command(pass_context=True, name="money", help="Показать топ юзеров.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def money(context, page: int=None):
-    await f_top(client, conn, context, page, "money")
+    await f_top(client, conn, context, page)
 
 @client.command(pass_context=True, name="set", help="Настройка.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -943,6 +810,11 @@ async def set(context, arg1: str=None, arg2: str=None, *, args: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def remove(context, arg1: str=None, arg2: str=None, *, args: str=None):
     await o_remove(client, conn, context, arg1, arg2, args)
+
+@client.command(pass_context=True, name="backgrounds", aliases=["backs"], help="Показать список фонов.")
+@commands.cooldown(1, 1, commands.BucketType.user)
+async def backgrounds(context, pages: int=None):
+    await o_backgrounds(client, conn, context)
 
 @client.command(pass_context=True, name="$", help="Посмотреть свой баланс.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -988,16 +860,6 @@ async def kiss(context, who: discord.Member):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def drink(context):
     await f_drink(client, conn, context)
-
-# @client.command(pass_context=True, name="shiki", help="Найти аниме на Shikimori.")
-# @commands.cooldown(1, 1, commands.BucketType.user)
-# async def shiki(context, *, name: str):
-#     await api_shiki(client, conn, logger, context, name)
-
-# @client.command(pass_context=True, name="google", help="Найти что-то в гугле.")
-# @commands.cooldown(1, 1, commands.BucketType.user)
-# async def google_search(context, *, name: str):
-#     await api_google_search(client, conn, logger, context, name)
 
 @client.command(pass_context=True, name="guild", help="Гильдии.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -1061,11 +923,6 @@ async def ban(context, who: discord.Member, reason: str=None):
 @commands.cooldown(1, 1, commands.BucketType.user)
 async def unban(context, whos: str, reason: str=None):
     await a_unban(client, conn, context, whos, reason)
-
-@client.command(pass_context=True, name="mute", help="Замутить пользователя.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def mute(context, who: str, mute_time: int=1800, reason: str=None):
-    await a_mute(client, conn, context, who, mute_time, reason)
 
 @client.command(pass_context=True, name="start", help="Test.")
 @commands.cooldown(1, 1, commands.BucketType.user)
@@ -1135,11 +992,6 @@ async def stop(context):
 async def clear(context, count: int=1, who: discord.Member=None):
     await a_clear(client, conn, context, count, who)
 
-@client.command(pass_context=True, name="about", help="Показать информацию о боте.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def about(context):
-    await o_about(client, conn, context)
-
 @client.command(pass_context=True, name="like")
 @commands.cooldown(1, 10, commands.BucketType.user)
 async def like(context):
@@ -1150,10 +1002,47 @@ async def like(context):
 async def list(context, page: int=None):
     await o_list(client, conn, context, page)
 
-@client.command(pass_context=True, name="invite", help="Получить ссылку на добавление бота себе на сервер.")
-@commands.cooldown(1, 1, commands.BucketType.user)
-async def invite(context):
-    await o_invite(client, conn, context)
+
+async def l_check_lvlup(client, conn, channel, who, const, xp):
+    lang = const["locale"]
+    if not lang in locale.keys():
+        return
+    lvl = xp_lvlup_list[xp]
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    em.description = locale[lang]["lvlup"].format(
+        who=who.mention,
+        lvl=lvl
+    )
+    data = await conn.fetch("SELECT * FROM mods WHERE server_id = '{server_id}' AND type = 'lvlup'".format(
+        server_id=who.server.id
+    ))
+    roles = []
+    is_new_role = False
+    roles_mention = ""
+    for role in who.roles:
+        if not any(role.id==dat["value"] for dat in data):
+            roles.append(role)
+    for dat in data:
+        if not dat["condition"] == str(lvl):
+            continue
+        role = discord.utils.get(who.server.roles, id=dat["value"])
+        if role and not role in roles:
+            is_new_role = True
+            roles_mention += role.mention+", "
+            roles.append(role)
+    if is_new_role:
+        em.description += locale[lang]["lvlup_continue"].format(role=roles_mention[:-2])
+        try:
+            await client.replace_roles(who, *roles)
+        except:
+            pass
+    em.set_image(url="https://discord.band/images/celestia_lvlup.png")
+    try:
+        msg = await client.send_message(channel, embed=em)
+        await asyncio.sleep(25)
+        await client.delete_message(msg)
+    except:
+        pass
 
 
 @client.event
@@ -1166,7 +1055,7 @@ async def on_message(message):
         await client.delete_message(message)
 
     if not message.channel.is_private:
-        logger.info("server - {} | server_id - {} | channel - {} | channel_id - {} | user_name - {} | user_mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.channel.id, message.author.name,message.author.mention, message.id, message.content))
+        logger.info("server - {} | server_id - {} | channel - {} | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.server.name, message.server.id, message.channel.name, message.author.name,message.author.mention, message.id, message.content))
     else:
         logger.info("private_message | name - {} | mention - {} | message_id - {}\ncontent - {}\n".format(message.author.name,message.author.mention, message.id, message.content))
         await client.process_commands(message)
@@ -1213,7 +1102,7 @@ async def on_message(message):
                 id=message.author.id
             ))
             if str(dat["xp_count"]+1) in xp_lvlup_list.keys():
-                client.loop.create_task(u_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1)))
+                client.loop.create_task(l_check_lvlup(client, conn, message.channel, message.author, serv, str(dat["xp_count"]+1)))
         await conn.execute("UPDATE users SET messages = {messages} WHERE stats_type = '{stats_type}' AND discord_id = '{id}'".format(
             stats_type=stats_type,
             messages=dat["messages"]+1,
@@ -1223,23 +1112,18 @@ async def on_message(message):
         await conn.execute("INSERT INTO users(name, discord_id, discriminator, xp_count, xp_time, messages, background, stats_type) VALUES('{}', '{}', '{}', {}, {}, {}, '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, message.author.discriminator, 1, t, 1, random.choice(background_list), stats_type))
 
     if message.content.startswith(serv["prefix"]) or message.content.startswith("!help"):
-        if message.server.id == "409235467226185728":
-            comm_name = message.content[len(serv["prefix"]):].split(" ")[0]
-            if comm_name in moon_server.keys():
-                await u_response_moon_server(client, serv, message, comm_name)
-
         await client.process_commands(message)
 
 
 
-# def max(list):
-#     maximum = -1
-#     p = 0
-#     for s in range(len(list)):
-#         if int(list[s]) > maximum:
-#             maximum = int(list[s])
-#             p = s
-#     return p
+def max(list):
+    maximum = -1
+    p = 0
+    for s in range(len(list)):
+        if int(list[s]) > maximum:
+            maximum = int(list[s])
+            p = s
+    return p
 
 async def strcmp(s1, s2):
     i1 = 0
@@ -1256,4 +1140,4 @@ async def strcmp(s1, s2):
     else:
         return 1
 
-client.run(settings["token"])
+client.run(settings["luna_token"])

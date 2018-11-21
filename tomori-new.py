@@ -92,11 +92,7 @@ class S(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self._set_headers()
 
-def run(server_class=HTTPServer, handler_class=S, port=8000):
-    server_address = ('51.38.113.96', port)
-    httpd = server_class(server_address, handler_class)
-    logger.info('Starting httpd...')
-    httpd.serve_forever()
+
 
 
 @client.event

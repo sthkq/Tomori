@@ -57,6 +57,7 @@ async def f_me(client, conn, context, who):
             colour=0xC5934B))
         await client.send_message(message.channel, embed=em)
         return
+    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
     if not const or not const["is_me"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
@@ -65,9 +66,16 @@ async def f_me(client, conn, context, who):
         await client.delete_message(message)
     except:
         pass
-    await client.send_typing(message.channel)
     if not who:
         who = message.author
+    if who.bot:
+        em.description = locale[lang]["global_bot_mentioned"].format(
+            who=message.author.display_name+"#"+message.author.discriminator,
+            bot=who.display_name
+        )
+        await client.send_message(message.channel, embed=em)
+        return
+    await client.send_typing(message.channel)
     if not const["is_global"]:
         stats_type = message.server.id
     else:
@@ -737,7 +745,7 @@ async def f_sex(client, conn, context, who):
                 stats_type=stats_type,
                 id=who.id
             ))
-            em.description =  "{} трахнул {}".format(message.author.mention, who.mention)
+            em.description =  "{} трахнул(а) {}".format(message.author.mention, who.mention)
             em.set_image(url=random.choice(sex_list))
     else:
         await conn.execute("INSERT INTO users(name, discord_id, stats_type) VALUES('{}', '{}', '{}')".format(clear_name(message.author.display_name[:50]), message.author.id, stats_type))
@@ -768,7 +776,7 @@ async def are_you_nitty(client, lang, who, message):
     return True
 
 
-async def f_top(client, conn, context, page):
+async def f_top(client, conn, context, page, type):
     message = context.message
     server_id = message.server.id
     const = await get_cached_server(conn, server_id)
@@ -807,7 +815,13 @@ async def f_top(client, conn, context, page):
         em.description = locale[lang]["global_page_not_exists"].format(who=message.author.display_name+"#"+message.author.discriminator, number=page)
         await client.send_message(message.channel, embed=em)
         return
-    dat = await conn.fetch("SELECT name, discord_id, avatar_url, xp_count FROM users WHERE stats_type = '{stats_type}' ORDER BY xp_count DESC LIMIT 5 OFFSET {offset}".format(stats_type=stats_type, offset=(page-1)*5))
+    if type == "xp":
+        order = "xp_count"
+    elif type == "money":
+        order = "cash"
+    else:
+        order = "name"
+    dat = await conn.fetch("SELECT * FROM users WHERE stats_type = '{stats_type}' ORDER BY {order} DESC LIMIT 5 OFFSET {offset}".format(order=order, stats_type=stats_type, offset=(page-1)*5))
 #==================================================
     img = Image.open("cogs/stat/top5.png")
     back = Image.open("cogs/stat/top5.png")
@@ -815,7 +829,7 @@ async def f_top(client, conn, context, page):
     draws = ImageDraw.Draw(back)
 
     font_position = ImageFont.truetype("cogs/stat/Roboto-Bold.ttf", 24)
-    font_xp_count = ImageFont.truetype("cogs/stat/Roboto-Regular.ttf", 16)
+    font_count = ImageFont.truetype("cogs/stat/Roboto-Regular.ttf", 16)
 
     for i, user in enumerate(dat):
         name = user["name"]
@@ -873,20 +887,30 @@ async def f_top(client, conn, context, page):
             font=font_position
         )
         draw.text((100-font_name.getsize(name)[0]/2+i*200, 50-font_name.getsize(name)[1]/2), name, (255, 255, 255), font=font_name)
-        xp_count = locale[lang]["fun_top5_xp_count"].format((user["xp_count"]))
+        if type == "xp":
+            count = locale[lang]["fun_top5_xp_count"].format((user["xp_count"]))
+            _type = "xp"
+        elif type == "money":
+            count = "{}$".format((user["cash"]))
+            _type = "money"
+        else:
+            count = "0"
+            _type = "name"
         draw.text(
             (
-                100-font_xp_count.getsize(xp_count)[0]/2+i*200,
-                475-font_xp_count.getsize(xp_count)[1]/2
+                100-font_count.getsize(count)[0]/2+i*200,
+                475-font_count.getsize(count)[1]/2
             ),
-            xp_count,
+            count,
             (255, 255, 255),
-            font=font_xp_count
+            font=font_count
         )
 
     back.paste(img, (0, 0), img)
 
     back.save('cogs/stat/return/top/{}.png'.format(message.author.id))
-    await client.send_file(message.channel, "cogs/stat/return/top/{}.png".format(message.author.id), content=locale[lang]["fun_top5_response"])
+    await client.send_file(message.channel, "cogs/stat/return/top/{}.png".format(message.author.id), content=locale[lang]["fun_top5_response"].format(
+        type=locale[lang]["fun_top5_type_"+_type]
+    ))
     os.remove("cogs/stat/return/top/{}.png".format(message.author.id))
     return

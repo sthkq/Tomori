@@ -27,13 +27,11 @@ invite_url = "https://discordapp.com/api/oauth2/authorize?client_id=491605739635
 async def o_webhook(client, conn, context, name, value):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -82,13 +80,11 @@ async def o_webhook(client, conn, context, name, value):
 async def o_about(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -111,7 +107,7 @@ For any questions talk to <@316287332779163648>.".format(support_url=support_url
 при поддержке __Unknown'a__ и __Teris'а__.***\n\n\
 **[Ссылка на сервер поддержки]({support_url})**\n\
 **[Ссылка на сайт]({site_url})**\n\n\
-По всем вопросам обращайтесь к <@316287332779163648>.".format(support_url=support_url, site_url=site_url)
+По всем вопросам обращайтесь к <@499937748862500864>.".format(support_url=support_url, site_url=site_url)
     if not message.server.id in servers_without_follow_us:
         em.add_field(
             name=locale[lang]["global_follow_us"],
@@ -124,13 +120,11 @@ For any questions talk to <@316287332779163648>.".format(support_url=support_url
 async def o_invite(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -157,13 +151,11 @@ async def o_server(client, conn, context):
     message = context.message
     server_id = message.server.id
     server = message.server
-    const = await conn.fetchrow("SELECT em_color, prefix, locale, bank, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -223,13 +215,11 @@ async def o_server(client, conn, context):
 async def o_avatar(client, conn, context, who):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, is_avatar, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -253,16 +243,14 @@ async def o_like(client, conn, context):
     server_id = message.server.id
     if message.author.bot or message.channel.is_private:
         return
-    const = await conn.fetchrow("SELECT em_color, locale, likes, like_one, like_time FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
-    if not const:
+    if not const or not const["is_like"]:
         em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -273,12 +261,18 @@ async def o_like(client, conn, context):
         pass
     now = int(time.time())
     if now - const["like_time"] > 14400:
+        likes = const["likes"] + const["like_one"]
+        pop_cached_server(server_id)
+        if likes > 99:
+            likes = 1
+            global cached_servers
+            cached_servers = {}
+            await conn.execute("UPDATE settings SET likes = DEFAULT, like_time = DEFAULT")
         await conn.execute("UPDATE settings SET likes = {likes}, like_time = {like_time} WHERE discord_id = '{discord_id}'".format(
-            likes=const["likes"] + const["like_one"],
+            likes=likes,
             like_time=now,
             discord_id=server_id
         ))
-        pop_cached_server(server_id)
         global top_servers
         top_servers = await conn.fetch("SELECT discord_id FROM settings ORDER BY likes DESC, like_time ASC LIMIT 10")
         em.description = locale[lang]["other_like_success"].format(who=message.author.display_name+"#"+message.author.discriminator)
@@ -307,18 +301,16 @@ async def o_list(client, conn, context, page):
     server_id = message.server.id
     if message.author.bot or message.channel.is_private:
         return
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{discord_id}'".format(discord_id=server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     _locale = locale[lang]
     em = discord.Embed(colour=0x87b5ff)
-    if not const:
+    if not const or not const["is_list"]:
         em.description = _locale["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
         await client.send_message(message.channel, embed=em)
         return
@@ -378,13 +370,11 @@ async def o_list(client, conn, context, page):
 async def o_report(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, prefix, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -412,13 +402,11 @@ async def o_report(client, conn, context):
 async def o_ping(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -426,6 +414,17 @@ async def o_ping(client, conn, context):
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
+    badges = ["verified"]
+    _badges = await check_badges(conn, message.author.id, badges)
+    if not _badges:
+        em.description = locale[lang]["global_have_not_badge"].format(who=message.author.display_name+"#"+message.author.discriminator, badge=badges[0])
+        await client.send_message(message.channel, embed=em)
+        return
+    for badge in _badges:
+        if not badge in badges:
+            em.description = locale[lang]["global_have_not_badge"].format(who=message.author.display_name+"#"+message.author.discriminator, badge=badge)
+            await client.send_message(message.channel, embed=em)
+            return
     try:
         await client.delete_message(message)
     except:
@@ -445,11 +444,9 @@ async def o_help(client, conn, context):
     server_id = message.server.id
     const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -513,7 +510,7 @@ async def o_help(client, conn, context):
     if const["is_cash"]:
         com_stat += "``$``, "
     if const["is_top"]:
-        com_stat += "``top``, "
+        com_stat += "``top``, ``money``, "
     if const["is_me"]:
         com_stat += "``me``, "
     com_other = "``help``, "
@@ -558,11 +555,9 @@ async def o_lvlup(client, conn, context, page):
     server_id = message.server.id
     const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
@@ -669,13 +664,11 @@ async def o_synclvlup(client, conn, context):
 async def o_backgrounds(client, conn, context):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT server_money, em_color, locale FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -715,11 +708,9 @@ async def o_set(client, conn, context, arg1, arg2, args):
     server_id = message.server.id
     const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:
@@ -1265,13 +1256,11 @@ async def o_set(client, conn, context, arg1, arg2, args):
 async def o_remove(client, conn, context, arg1, arg2, args):
     message = context.message
     server_id = message.server.id
-    const = await conn.fetchrow("SELECT em_color, locale, server_money FROM settings WHERE discord_id = '{}'".format(server_id))
+    const = await get_cached_server(conn, server_id)
     lang = const["locale"]
+    em = discord.Embed(colour=0xC5934B)
     if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
+        em.description = "{who}, {response}.".format(who=message.author.display_name+"#"+message.author.discriminator, response="ошибка локализации")
         await client.send_message(message.channel, embed=em)
         return
     if not const:

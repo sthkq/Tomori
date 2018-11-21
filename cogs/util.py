@@ -36,140 +36,8 @@ draws.polygon([(531, 15), (471, 15), (15, 471), (15, 531), (471, 987), (531, 987
 mask = mask.resize((343, 343), Image.ANTIALIAS)
 
 
-global voice_clients
-voice_clients = {}
-
-headers = {'authorization': "Bot "+settings["token"], 'Content-Type': 'application/json'}
-discord_api_url = "https://discordapp.com/api/v6"
 
 
-async def u_voice_state_update(client, conn, logger, before, after):
-    ret = '---------[voice_state_update]:{0.server.name} | {0.server.id}\n'.format(before)
-    if before.voice.voice_channel:
-        ret += 'before - {0.name} | {0.id} -> {0.voice.voice_channel.name} | {0.voice.voice_channel.id}\n'.format(before)
-    if after.voice.voice_channel:
-        ret += 'after - {0.name} | {0.id} -> {0.voice.voice_channel.name} | {0.voice.voice_channel.id}\n'.format(after)
-    logger.info(ret)
-    if before.bot:
-        return
-    global voice_clients
-    const = await get_cached_server(conn, before.server.id)
-    if not const:
-        logger.error("'const' doesn't exists((")
-        return
-    if before.voice.voice_channel:
-        if (not after.voice.voice_channel or (after.server.afk_channel and after.server.afk_channel.id == after.voice.voice_channel.id)) and before.id in voice_clients.keys():
-            voice_time = int(time.time()) - voice_clients.pop(before.id, int(time.time()))
-            if not const["is_global"]:
-                stats_type = before.server.id
-            else:
-                stats_type = "global"
-            dat = await conn.fetchrow("UPDATE users SET voice_time = voice_time + {time} WHERE discord_id = '{id}' AND stats_type = '{stats_type}' RETURNING voice_time".format(
-                time=voice_time,
-                id=before.id,
-                stats_type=stats_type
-            ))
-            if dat:
-                new_voice_time = dat["voice_time"]
-                if not voice_time:
-                    voice_time = 0
-                await u_check_voice_time(client, conn, const, before, voice_time, new_voice_time)
-        await check_empty_voice(client, conn, const, before.voice.voice_channel)
-    if after.voice.voice_channel:
-        if not before.id in voice_clients.keys() and not (after.server.afk_channel and after.server.afk_channel.id == after.voice.voice_channel.id):
-            voice_clients[before.id] = int(time.time())
-        if const["create_lobby_id"] and const["create_lobby_category_id"] and after.voice.voice_channel.id == const["create_lobby_id"]:
-            if await check_captcha(client, conn, const, after, after): #client.get_channel("484805058760933377")
-                payload = {
-                    "name": after.display_name,
-                    "type": 2,
-                    "user_limit": 10,
-                    "parent_id": const["create_lobby_category_id"],
-                    "permission_overwrites": [
-                        {
-                            "id": after.server.default_role.id,
-                            "type": "role",
-                            "allow": 36701184,
-                            "deny": 0
-                        },
-                        {
-                            "id": after.id,
-                            "type": "member",
-                            "allow": 36701457,
-                            "deny": 0
-                        }
-                    ]
-                }
-                response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=after.server.id), json=payload, headers=headers)
-                response = json.loads(response.text)
-                if response.get("id"):
-                    payload = {
-                        "channel_id": response.get("id")
-                    }
-                    requests.patch("{base}/guilds/{server}/members/{member}".format(base=discord_api_url, server=after.server.id, member=after.id), json=payload, headers=headers)
-
-
-
-
-
-async def check_empty_voice(client, conn, const, channel):
-    response = requests.get("{base}/channels/{channel}".format(base=discord_api_url, channel=channel.id), headers=headers)
-    response = json.loads(response.text)
-    if response.get("parent_id"):
-        if response.get("parent_id") == const["create_lobby_category_id"] and response.get("id") != const["create_lobby_id"] and len(channel.voice_members) == 0:
-            await client.delete_channel(channel)
-
-
-
-async def u_createvoice(client, conn, logger, context):
-    message = context.message
-    server_id = message.server.id
-    who = message.author
-    const = await conn.fetchrow("SELECT * FROM settings WHERE discord_id = '{}'".format(server_id))
-    lang = const["locale"]
-    if not lang in locale.keys():
-        em = discord.Embed(description="{who}, {response}.".format(
-            who=message.author.display_name+"#"+message.author.discriminator,
-            response="ошибка локализации",
-            colour=0xC5934B))
-        await client.send_message(message.channel, embed=em)
-        return
-    if not const:
-        em.description = locale[lang]["global_not_available"].format(who=message.author.display_name+"#"+message.author.discriminator)
-        await client.send_message(message.channel, embed=em)
-        return
-    em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    try:
-        await client.delete_message(message)
-    except:
-        pass
-    payload = {
-        "name": "Tomori private voices",
-        "type": 4
-    }
-    response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=server_id), json=payload, headers=headers)
-    category_id = json.loads(response.text).get("id")
-    payload = {
-        "name": "Create voice [+]",
-        "type": 2,
-        "parent_id": category_id,
-        "permission_overwrites": [
-            {
-                "id": message.server.default_role.id,
-                "type": "role",
-                "allow": 36701184,
-                "deny": 0
-            }
-        ]
-    }
-    response = requests.post("{base}/guilds/{server}/channels".format(base=discord_api_url, server=server_id), json=payload, headers=headers)
-    lobby_id = json.loads(response.text).get("id")
-    await conn.execute("UPDATE settings SET create_lobby_id = '{lobby}', create_lobby_category_id = '{category}', is_createvoice = TRUE WHERE discord_id = '{server}'".format(
-        lobby=lobby_id,
-        category=category_id,
-        server=server_id
-    ))
-    pop_cached_server(server_id)
 
 async def u_setvoice(client, conn, logger, context):
     message = context.message
@@ -397,51 +265,33 @@ async def u_check_travelling(client, member):
         await client.add_roles(member, *added_roles)
     #await client.kick(user)
 
-async def u_clone_roles(client, conn, context, server_id):
-    message = context.message
-    server = client.get_server(server_id)
-    if not server:
-        return
-    try:
-        await client.delete_message(message)
-    except:
-        pass
-    roles = message.server.roles
-    roles = sorted(roles,key=lambda role: role.position, reverse=True)
-    for role in roles:
-        try:
-            await client.create_role(
-                server,
-                name=role.name,
-                permissions=role.permissions,
-                colour=role.colour,
-                hoist=role.hoist,
-                mentionable=role.mentionable
-            )
-        except:
-            pass
 
 
-
-async def u_response_moon_server(client, const, message, command_name):
+async def u_response_moon_server(client, const, message, comm_name):
+    global moon_server
     who = None
-    try:
-        arg1 = message.content.split(" ", maxsplit=1)[1]
-    except:
+    arg1 = message.content.split(" ", maxsplit=1)
+    if len(arg1) > 1:
+        arg1 = arg1[1]
+    else:
         arg1 = None
     if arg1:
         who = discord.utils.get(message.server.members, name=arg1)
         if not who:
-            arg1 = re.sub(r'[<@#&!>]+', '', arg1.lower())
+            arg1 = re.sub(r'[<@#&!>]+', '', arg1)
             who = discord.utils.get(message.server.members, id=arg1)
-    if moon_server.get(command_name).get("is_who") and not who:
-        await client.send_message(message.channel, "{who}, Ты не выбрал пользователя для этого действия(".format(who=message.mention))
+    if moon_server.get(comm_name).get("is_who", "") == "True" and not who:
+        await client.send_message(message.channel, "{who}, Ты не выбрал пользователя для этого действия(".format(who=message.author.mention))
         return
     em = discord.Embed(colour=int(const["em_color"], 16) + 512)
-    em.description = moon_server.get(command_name).get("response").format(author=message.author.mention)
-    if who:
-        em.description = em.description.format(who=who.mention)
-        em.set_image(url=random.choice(moon_server.get(command_name).get("gifs")))
+    if moon_server.get(comm_name).get("is_who", "") == "True":
+        text = moon_server.get(comm_name).get("response").format(author=message.author.mention, user=who.mention)
+    else:
+        text = moon_server.get(comm_name).get("response").format(author=message.author.mention)
+    em.description = text
+    em.set_image(url=random.choice(moon_server.get(comm_name).get("gifs")))
+    await client.send_message(message.channel, embed=em)
+
 
 
 
@@ -693,6 +543,58 @@ async def check_captcha(client, conn, const, channel, member):
     else:
         return True
 
+mask_captcha = Image.new('L', (1000, 1000), 0)
+draws = ImageDraw.Draw(mask_captcha)
+draws.rectangle((0, 350) + (1000, 650), fill=77)
+mask_captcha = mask_captcha.resize((1000, 1000), Image.ANTIALIAS)
+
+font_captcha_1 = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 100)
+font_captcha_2 = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 200)
+
+async def check_captcha_new(client, conn, const, channel, member):
+    captcha = ""
+    shift = random.randint(0, 1)
+    for i in [1,0,1,0,1,0]:
+        captcha += random.choice(captcha_symbols[(i+shift)%2])
+    lang = const["locale"]
+    content = locale[lang]["captcha_solve"].format(who=member.mention)
+
+    ava_url = member.avatar_url
+    if ava_url:
+        try:
+            response = str(requests.session().get(ava_url).content)
+            if not response[2:-1]:
+                ava_url = None
+        except:
+            ava_url = None
+    if not ava_url:
+        ava_url = member.default_avatar_url
+    response = requests.get(ava_url)
+    back = Image.open(BytesIO(response.content))
+    back = back.resize((1000, 1000))
+    back = back.filter(ImageFilter.GaussianBlur(15))
+    back.putalpha(mask_captcha)
+    back.crop((0, 350) + (1000, 650))
+    draw = ImageDraw.Draw(back)
+
+    draw.text(
+        (back.size[0]-font_captcha_1.getsize(captcha)[0]/2, back.size[1]-font_captcha_1.getsize(captcha)[1]/2),
+        captcha,
+        (255, 255, 255),
+        font=font_captcha_1
+    )
+
+    back.save('cogs/stat/return/captcha/{}.png'.format(member.id))
+    await client.send_file(channel, "cogs/stat/return/captcha/{}.png".format(member.id), content=content)
+    os.remove("cogs/stat/return/captcha/{}.png".format(member.id))
+
+    msg = await client.wait_for_message(timeout=60, author=member)
+    if not msg or not msg.content or not msg.content.lower() == captcha.lower():
+        content = locale[lang]["captcha_wrong_solution"].format(who=member.mention)
+        await client.send_message(channel, content)
+        return False
+    else:
+        return True
 
 
 async def u_check_voice_time(client, conn, const, user, voice_time, new_voice_time):
@@ -962,37 +864,6 @@ async def u_verify(client, conn, context, identify):
 
 
 spam_messages = {}
-spamming_objs = []
-
-async def spamming(client):
-    global spam_messages
-    global spamming_objs
-    await client.wait_until_ready()
-    while not client.is_closed:
-        for obj in spamming_objs:
-            author = obj.get("author")
-            const = obj.get("const")
-            lang = const["locale"]
-            user = spam_messages.get(author.id)
-            role = discord.utils.get(author.server.roles, id=const["antispam_role_id"])
-            roles = author.roles
-            if role:
-                roles.append(role)
-            em = discord.Embed(
-                title="Tomori ANTISPAM",
-                description=locale[lang]["antispam_spam"].format(who=author.display_name+"#"+author.discriminator),
-                colour=int(const["em_color"], 16) + 512
-            )
-            await asyncio.wait([
-                client.delete_messages(user.get("messages")),
-                client.send_message(author, embed=em),
-                client.replace_roles(author, *roles)
-            ])
-            try:
-                spam_messages.pop(author.id)
-            except:
-                pass
-        await asyncio.sleep(10)
 
 async def check_spam(client, conn, const, message):
     text = message.content
@@ -1024,7 +895,6 @@ async def check_spam(client, conn, const, message):
 
     # Spam
     global spam_messages
-    global spamming_objs
     if const["antispam_spam"]:
         user = spam_messages.get(author.id)
         _time = datetime.now()
@@ -1039,10 +909,23 @@ async def check_spam(client, conn, const, message):
             })
             return False
         elif len(user.get("messages")) > 5:
-            spamming_objs.append({
-                "author": author,
-                "const": const
-            })
+            em.description = locale[lang]["antispam_spam"].format(who=message.author.display_name+"#"+message.author.discriminator)
+            role = discord.utils.get(message.server.roles, id=const["antispam_role_id"])
+            roles = author.roles
+            if role:
+                roles.append(role)
+            mess = user.get("messages")
+            try:
+                spam_messages.pop(author.id)
+            except:
+                pass
+            await asyncio.wait([
+                client.delete_messages(mess),
+                client.send_message(message.channel, embed=em),
+                client.replace_roles(author, *roles)
+            ])
+            await asyncio.sleep(600)
+            await client.remove_roles(author, role)
             return True
         else:
             mess = user.get("messages")
@@ -1054,9 +937,56 @@ async def check_spam(client, conn, const, message):
                 }
             })
 
+    # Mentions
+    if len(message.mentions) + len(message.role_mentions) > 4:
+        em.description = locale[lang]["antispam_spam"].format(who=message.author.display_name+"#"+message.author.discriminator)
+        role = discord.utils.get(message.server.roles, id=const["antispam_role_id"])
+        roles = author.roles
+        if role:
+            roles.append(role)
+        await asyncio.wait([
+            client.delete_message(message),
+            client.send_message(message.channel, embed=em),
+            client.replace_roles(author, *roles)
+        ])
+        await asyncio.sleep(300)
+        await client.remove_roles(author, role)
+
     # End
     return False
 
+
+def add_muted(client, user_dat):
+    global muted_users
+    t = int(user_dat["condition"])
+    s = client.get_server(user_dat["server_id"])
+    if s:
+        m = s.get_member(user_dat["name"])
+        if m:
+            o = {
+                "server": s,
+                "member": m,
+                "type": user_dat["value"]
+            }
+            if t in muted_users.keys():
+                muted_users[t].append(o)
+            else:
+                muted_users[t] = [o]
+            return True
+    return False
+
+async def u_unmute(client, conn, server, member):
+    const = await get_cached_server(conn, server.id)
+    if not const["antispam_role_id"]:
+        return
+    role = discord.utils.get(server.roles, id=const["antispam_role_id"])
+    if not role:
+        return
+    await conn.execute("DELETE FROM mods WHERE type = 'muted_users' AND server_id = '{server}' AND name = '{member}'".format(
+        server=server.id,
+        member=member.id
+    ))
+    await client.remove_roles(member, role)
 
 
 # async def u_check_achievements(client, conn, const, message, key):
